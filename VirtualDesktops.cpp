@@ -1,6 +1,60 @@
 #include "stdafx.h"
 #include "VirtualDesktops.h"
 
+// http://stackoverflow.com/a/6088475
+class WindowsAnimationSuppressor
+{
+public:
+	WindowsAnimationSuppressor(bool start_suppressed = true)
+	{
+		if(start_suppressed)
+			Suppress();
+	}
+
+	~WindowsAnimationSuppressor()
+	{
+		Unsuppress();
+	}
+
+	bool Suppress()
+	{
+		if(m_suppressed)
+			return true;
+
+		m_settings.cbSize = sizeof(ANIMATIONINFO);
+		if(!::SystemParametersInfo(SPI_GETANIMATION, sizeof(ANIMATIONINFO), &m_settings, 0))
+			return false;
+
+		if(m_settings.iMinAnimate == 0)
+			return true;
+
+		int iOldMinAnimate = m_settings.iMinAnimate;
+		m_settings.iMinAnimate = 0;
+		if(!::SystemParametersInfo(SPI_SETANIMATION, sizeof(ANIMATIONINFO), &m_settings, 0))
+			return false;
+
+		m_settings.iMinAnimate = iOldMinAnimate;
+		m_suppressed = true;
+		return true;
+	}
+
+	bool Unsuppress()
+	{
+		if(!m_suppressed)
+			return true;
+
+		if(!::SystemParametersInfo(SPI_SETANIMATION, sizeof(ANIMATIONINFO), &m_settings, 0))
+			return false;
+
+		m_suppressed = false;
+		return true;
+	}
+
+private:
+	bool m_suppressed = false;
+	ANIMATIONINFO m_settings;
+};
+
 struct MonitorInfo
 {
 	std::vector<HWND> taskbarOrderedWindows;
@@ -21,13 +75,18 @@ VirtualDesktops::VirtualDesktops(VirtualDesktopsConfig config /*= VirtualDesktop
 
 VirtualDesktops::~VirtualDesktops()
 {
+	WindowsAnimationSuppressor suppressor(false);
+
 	for(DesktopInfo &desktop : m_desktops)
 	{
 		auto &windows = desktop.zOrderedWindows;
 		for(auto i = windows.rbegin(); i != windows.rend(); ++i)
 		{
+			// Suppress animation lazily.
+			suppressor.Suppress();
+
 			CWindow window(*i);
-			window.ShowWindow(SW_SHOWNA);
+			ShowWindowOnSwitch(window, true);
 		}
 	}
 }
@@ -36,6 +95,8 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 {
 	if(desktopId == m_currentDesktopId)
 		return;
+
+	WindowsAnimationSuppressor suppressor;
 
 	EnumWindows([](HWND hWnd, LPARAM lParam) {
 		CWindow window(hWnd);
@@ -49,7 +110,7 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 			if((dwExStyle & WS_EX_APPWINDOW) || !(dwExStyle & WS_EX_TOOLWINDOW)/* || pThis->IsWindowVisibleOnScreen(window)*/)
 			{
 				currentDesktop.zOrderedWindows.push_back(hWnd);
-				window.ShowWindow(SW_HIDE);
+				ShowWindowOnSwitch(hWnd, false);
 			}
 		}
 
@@ -62,7 +123,7 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 	for(auto i = windows.rbegin(); i != windows.rend(); ++i)
 	{
 		CWindow window(*i);
-		window.ShowWindow(SW_SHOWNA);
+		ShowWindowOnSwitch(window, true);
 	}
 
 	windows.clear();
@@ -101,4 +162,9 @@ bool VirtualDesktops::IsWindowVisibleOnScreen(HWND hWnd)
 	}, reinterpret_cast<LPARAM>(&param));
 
 	return param.isVisible;
+}
+
+bool VirtualDesktops::ShowWindowOnSwitch(HWND hWnd, bool show)
+{
+	return FALSE != ShowWindow(hWnd, show ? SW_SHOWNA : SW_HIDE);
 }
