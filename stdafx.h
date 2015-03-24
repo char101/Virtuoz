@@ -33,6 +33,7 @@ extern CAppModule _Module;
 #include <atlcrack.h>
 
 // STL
+#include <cassert>
 #include <vector>
 #include <memory>
 

@@ -55,6 +55,12 @@ private:
 	ANIMATIONINFO m_settings;
 };
 
+namespace
+{
+	bool IsWindowVisibleOnScreen(HWND hWnd);
+	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate = false);
+}
+
 struct MonitorInfo
 {
 	std::vector<HWND> taskbarOrderedWindows;
@@ -63,6 +69,7 @@ struct MonitorInfo
 
 struct DesktopInfo
 {
+	HWND hForegroundWindow;
 	std::vector<HWND> zOrderedWindows;
 	std::vector<MonitorInfo> monitors;
 };
@@ -98,6 +105,8 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 
 	WindowsAnimationSuppressor suppressor;
 
+	m_desktops[m_currentDesktopId].hForegroundWindow = GetForegroundWindow();
+
 	EnumWindows([](HWND hWnd, LPARAM lParam) {
 		CWindow window(hWnd);
 		VirtualDesktops *pThis = reinterpret_cast<VirtualDesktops *>(lParam);
@@ -107,7 +116,7 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 		if(window.IsWindowVisible())
 		{
 			DWORD dwExStyle = window.GetExStyle();
-			if((dwExStyle & WS_EX_APPWINDOW) || !(dwExStyle & WS_EX_TOOLWINDOW)/* || pThis->IsWindowVisibleOnScreen(window)*/)
+			if((dwExStyle & WS_EX_APPWINDOW) || !(dwExStyle & WS_EX_TOOLWINDOW)/* || IsWindowVisibleOnScreen(window)*/)
 			{
 				currentDesktop.zOrderedWindows.push_back(hWnd);
 				ShowWindowOnSwitch(hWnd, false);
@@ -123,48 +132,58 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 	for(auto i = windows.rbegin(); i != windows.rend(); ++i)
 	{
 		CWindow window(*i);
-		ShowWindowOnSwitch(window, true);
+		ShowWindowOnSwitch(window, true, window == m_desktops[m_currentDesktopId].hForegroundWindow);
 	}
 
 	windows.clear();
 }
 
-bool VirtualDesktops::IsWindowVisibleOnScreen(HWND hWnd)
+namespace
 {
-	CWindow window(hWnd);
+	bool IsWindowVisibleOnScreen(HWND hWnd)
+	{
+		CWindow window(hWnd);
 
-	struct CALLBACK_PARAM {
-		CRect rect;
-		bool isVisible;
-	} param;
+		struct CALLBACK_PARAM {
+			CRect rect;
+			bool isVisible;
+		} param;
 
-	if(!window.GetWindowRect(&param.rect) || param.rect.IsRectEmpty())
-		return false;
+		if(!window.GetWindowRect(&param.rect) || param.rect.IsRectEmpty())
+			return false;
 
-	param.isVisible = false;
+		param.isVisible = false;
 
-	EnumDisplayMonitors(NULL, NULL, [](HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
-		CALLBACK_PARAM *pParam = reinterpret_cast<CALLBACK_PARAM *>(dwData);
+		EnumDisplayMonitors(NULL, NULL, [](HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+			CALLBACK_PARAM *pParam = reinterpret_cast<CALLBACK_PARAM *>(dwData);
 
-		MONITORINFO info;
-		info.cbSize = sizeof(MONITORINFO);
-		if(GetMonitorInfo(hMonitor, &info))
-		{
-			CRect temp;
-			if(temp.IntersectRect(&pParam->rect, &info.rcWork))
+			MONITORINFO info;
+			info.cbSize = sizeof(MONITORINFO);
+			if(GetMonitorInfo(hMonitor, &info))
 			{
-				pParam->isVisible = true;
-				return FALSE;
+				CRect temp;
+				if(temp.IntersectRect(&pParam->rect, &info.rcWork))
+				{
+					pParam->isVisible = true;
+					return FALSE;
+				}
 			}
-		}
 
-		return TRUE;
-	}, reinterpret_cast<LPARAM>(&param));
+			return TRUE;
+		}, reinterpret_cast<LPARAM>(&param));
 
-	return param.isVisible;
-}
+		return param.isVisible;
+	}
 
-bool VirtualDesktops::ShowWindowOnSwitch(HWND hWnd, bool show)
-{
-	return FALSE != ShowWindow(hWnd, show ? SW_SHOWNA : SW_HIDE);
+	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate /*= false*/)
+	{
+		assert(show || !activate); // can't hide and activate
+
+		DWORD dwSWPflags = SWP_NOMOVE | SWP_NOSIZE | SWP_ASYNCWINDOWPOS |
+			(activate ? 0 : SWP_NOACTIVATE | SWP_NOZORDER) |
+			(show ? SWP_SHOWWINDOW : SWP_HIDEWINDOW);
+		bool result = FALSE != SetWindowPos(hWnd, activate ? HWND_TOP : NULL, 0, 0, 0, 0, dwSWPflags);
+
+		return result;
+	}
 }
