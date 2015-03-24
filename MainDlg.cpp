@@ -1,13 +1,8 @@
-// MainDlg.cpp : implementation of the CMainDlg class
-//
-/////////////////////////////////////////////////////////////////////////////
-
 #include "stdafx.h"
 #include "resource.h"
-
 #include "MainDlg.h"
 
-LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam*/, BOOL& /*bHandled*/)
+BOOL CMainDlg::OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 {
 	// center the dialog on the screen
 	CenterWindow();
@@ -18,25 +13,53 @@ LRESULT CMainDlg::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM /*lParam
 	HICON hIconSmall = AtlLoadIconImage(IDR_MAINFRAME, LR_DEFAULTCOLOR, ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON));
 	SetIcon(hIconSmall, FALSE);
 
+	// init virtual desktops and hotkeys
+	VirtualDesktopsConfig config;
+
+	m_virtualDesktops.reset(new VirtualDesktops(config));
+
+	for(int i = 0; i < config.numberOfDesktops; i++)
+	{
+		if(::RegisterHotKey(m_hWnd, i, config.hotkeys[i].fsModifiers | MOD_NOREPEAT, config.hotkeys[i].vk))
+		{
+			m_registeredHotkeys.push_back(i);
+		}
+		else
+		{
+			// TODO: log
+		}
+	}
+
 	return TRUE;
 }
 
-LRESULT CMainDlg::OnAppAbout(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
+{
+	m_virtualDesktops->SwitchDesktop(nHotKeyID);
+}
+
+void CMainDlg::OnDestroy()
+{
+	for(auto a : m_registeredHotkeys)
+	{
+		::UnregisterHotKey(m_hWnd, a);
+	}
+
+	m_virtualDesktops.reset();
+}
+
+void CMainDlg::OnAppAbout(UINT uNotifyCode, int nID, CWindow wndCtl)
 {
 	CSimpleDialog<IDD_ABOUTBOX, FALSE> dlg;
 	dlg.DoModal();
-	return 0;
 }
 
-LRESULT CMainDlg::OnOK(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+void CMainDlg::OnOK(UINT uNotifyCode, int nID, CWindow wndCtl)
 {
-	// TODO: Add validation code 
-	EndDialog(wID);
-	return 0;
+	EndDialog(nID);
 }
 
-LRESULT CMainDlg::OnCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+void CMainDlg::OnCancel(UINT uNotifyCode, int nID, CWindow wndCtl)
 {
-	EndDialog(wID);
-	return 0;
+	EndDialog(nID);
 }
