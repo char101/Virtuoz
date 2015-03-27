@@ -26,7 +26,7 @@ BOOL CMainDlg::OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 		}
 		else
 		{
-			// TODO: log
+			DEBUG_LOG(logERROR) << "Could not register hotkey for desktop " << (i + 1);
 		}
 	}
 

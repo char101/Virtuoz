@@ -60,45 +60,113 @@ private:
 	ANIMATIONINFO m_settings;
 };
 
+class TaskbarManipulator
+{
+public:
+	TaskbarManipulator()
+	{
+		if(TTLib_ManipulationStart())
+			m_manipulating = true;
+		else
+			DEBUG_LOG(logERROR) << "TTLib_ManipulationStart failed";
+	}
+
+	~TaskbarManipulator()
+	{
+		if(m_manipulating)
+		{
+			TTLib_ManipulationEnd();
+			m_manipulating = false;
+		}
+	}
+
+	bool IsManipulating()
+	{
+		return m_manipulating;
+	}
+
+private:
+	bool m_manipulating = false;
+};
+
 namespace
 {
 	bool IsWindowVisibleOnScreen(HWND hWnd);
-	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool waitForCompletion, bool activate = false);
+	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate = false);
 }
+
+struct TaskbarItem
+{
+	bool pinned = false;
+	CString appId;
+	std::vector<HWND> windows;
+};
+
+struct TaskbarInfo
+{
+	std::vector<TaskbarItem> taskbarItems;
+};
 
 struct MonitorInfo
 {
-	std::vector<HWND> taskbarOrderedWindows;
+	TaskbarInfo taskbarInfo;
 	//CString wallpaper;
+};
+
+struct WindowsInfo
+{
+	HWND hForegroundWindow = NULL;
+	std::vector<HWND> zOrderedWindows;
 };
 
 struct DesktopInfo
 {
-	HWND hForegroundWindow;
-	std::vector<HWND> zOrderedWindows;
-	std::vector<MonitorInfo> monitors;
+	WindowsInfo windowsInfo;
+	std::map<CString, MonitorInfo> monitorsInfo;
 };
 
 VirtualDesktops::VirtualDesktops(VirtualDesktopsConfig config /*= VirtualDesktopsConfig()*/)
 	: m_config(config)
 {
 	m_desktops.resize(config.numberOfDesktops);
+
+	DWORD dwError = TTLib_Init();
+	if(dwError == TTLIB_OK)
+	{
+		m_TTLIbLoaded = true;
+
+		dwError = TTLib_LoadIntoExplorer();
+		if(dwError != TTLIB_OK)
+		{
+			DEBUG_LOG(logERROR) << "TTLib_LoadIntoExplorer failed with error " << dwError;
+		}
+	}
+	else
+	{
+		DEBUG_LOG(logERROR) << "TTLib_Init failed with error " << dwError;
+	}
 }
 
 VirtualDesktops::~VirtualDesktops()
 {
+	if(m_TTLIbLoaded)
+	{
+		TTLib_Uninit();
+		m_TTLIbLoaded = false;
+	}
+
 	WindowsAnimationSuppressor suppressor(false);
 
 	for(DesktopInfo &desktop : m_desktops)
 	{
-		auto &windows = desktop.zOrderedWindows;
+		auto &windows = desktop.windowsInfo.zOrderedWindows;
 		for(auto i = windows.rbegin(); i != windows.rend(); ++i)
 		{
 			// Suppress animation lazily.
 			suppressor.Suppress();
 
 			CWindow window(*i);
-			ShowWindowOnSwitch(window, true, suppressor.IsSuppressed());
+			ShowWindowOnSwitch(window, true);
 		}
 	}
 }
@@ -108,6 +176,17 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 	if(desktopId == m_currentDesktopId)
 		return;
 
+	SaveMonitorsInfo();
+
+	SwitchDesktopWindows(desktopId);
+
+	RestoreMonitorsInfo();
+}
+
+void VirtualDesktops::SwitchDesktopWindows(int desktopId)
+{
+	assert(desktopId != m_currentDesktopId);
+
 	WindowsAnimationSuppressor suppressor(false);
 
 	struct CALLBACK_PARAM {
@@ -115,7 +194,7 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 		WindowsAnimationSuppressor *pSuppressor;
 	} param = { this, &suppressor };
 
-	m_desktops[m_currentDesktopId].hForegroundWindow = GetForegroundWindow();
+	m_desktops[m_currentDesktopId].windowsInfo.hForegroundWindow = GetForegroundWindow();
 
 	EnumWindows([](HWND hWnd, LPARAM lParam) {
 		CWindow window(hWnd);
@@ -133,8 +212,8 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 				// Suppress animation lazily.
 				pSuppressor->Suppress();
 
-				currentDesktop.zOrderedWindows.push_back(hWnd);
-				ShowWindowOnSwitch(hWnd, false, pSuppressor->IsSuppressed());
+				currentDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
+				ShowWindowOnSwitch(hWnd, false);
 			}
 		}
 
@@ -143,18 +222,180 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 
 	m_currentDesktopId = desktopId;
 
-	auto &windows = m_desktops[m_currentDesktopId].zOrderedWindows;
+	auto &windows = m_desktops[m_currentDesktopId].windowsInfo.zOrderedWindows;
+	HWND hForegroundWindow = m_desktops[m_currentDesktopId].windowsInfo.hForegroundWindow;
 	for(auto i = windows.rbegin(); i != windows.rend(); ++i)
 	{
 		// Suppress animation lazily.
 		suppressor.Suppress();
 
 		CWindow window(*i);
-		ShowWindowOnSwitch(window, true, suppressor.IsSuppressed(), 
-			window == m_desktops[m_currentDesktopId].hForegroundWindow);
+		ShowWindowOnSwitch(window, true, window == hForegroundWindow);
 	}
 
-	windows.clear();
+	m_desktops[m_currentDesktopId].windowsInfo = WindowsInfo();
+}
+
+void VirtualDesktops::SaveMonitorsInfo()
+{
+	SaveTaskbarsInfo();
+/*
+	// TODO: Wallpaper?
+	struct CALLBACK_PARAM {
+		VirtualDesktops *pThis;
+	} param = { this };
+
+	EnumDisplayMonitors(NULL, NULL, [](HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+		CALLBACK_PARAM *pParam = reinterpret_cast<CALLBACK_PARAM *>(dwData);
+		VirtualDesktops *pThis = pParam->pThis;
+
+		MONITORINFOEX systemMonitorInfo;
+		systemMonitorInfo.cbSize = sizeof(MONITORINFOEX);
+		if(GetMonitorInfo(hMonitor, &systemMonitorInfo))
+		{
+			MonitorInfo monitorInfo;
+			pThis->SaveMonitorInfo(hMonitor, monitorInfo);
+			pThis->m_desktops[pThis->m_currentDesktopId].monitors[systemMonitorInfo.szDevice] = std::move(monitorInfo);
+		}
+
+		return TRUE;
+	}, reinterpret_cast<LPARAM>(&param));
+*/
+}
+
+void VirtualDesktops::SaveTaskbarsInfo()
+{
+	if(!m_TTLIbLoaded)
+		return;
+
+	TaskbarManipulator taskbarManipulator;
+	if(!taskbarManipulator.IsManipulating())
+		return;
+
+	HANDLE hTaskbar = TTLib_GetMainTaskbar();
+	SaveTaskbarInfo(hTaskbar);
+
+	int nCount;
+	if(TTLib_GetSecondaryTaskbarCount(&nCount))
+	{
+		for(int i = 0; i < nCount; i++)
+		{
+			hTaskbar = TTLib_GetSecondaryTaskbar(i);
+			SaveTaskbarInfo(hTaskbar);
+		}
+	}
+}
+
+void VirtualDesktops::SaveTaskbarInfo(HANDLE hTaskbar)
+{
+	HMONITOR hMonitor = TTLib_GetTaskbarMonitor(hTaskbar);
+
+	MONITORINFOEX systemMonitorInfo;
+	systemMonitorInfo.cbSize = sizeof(MONITORINFOEX);
+	if(!GetMonitorInfo(hMonitor, &systemMonitorInfo))
+	{
+		DEBUG_LOG(logERROR) << "GetMonitorInfo failed for monitor " << hMonitor;
+		return;
+	}
+
+	TaskbarInfo &taskbarInfo = m_desktops[m_currentDesktopId].monitorsInfo[systemMonitorInfo.szDevice].taskbarInfo;
+
+	int nButtonGroupCount;
+	if(TTLib_GetButtonGroupCount(hTaskbar, &nButtonGroupCount))
+	{
+		for(int i = 0; i < nButtonGroupCount; i++)
+		{
+			HANDLE hButtonGroup = TTLib_GetButtonGroup(hTaskbar, i);
+
+			TTLIB_GROUPTYPE nButtonGroupType;
+			if(!TTLib_GetButtonGroupType(hButtonGroup, &nButtonGroupType) ||
+				nButtonGroupType == TTLIB_GROUPTYPE_UNKNOWN ||
+				nButtonGroupType == TTLIB_GROUPTYPE_TEMPORARY)
+			{
+				continue;
+			}
+
+			TaskbarItem taskbarItem;
+
+			TTLib_GetButtonGroupAppId(hButtonGroup, taskbarItem.appId.GetBuffer(MAX_APPID_LENGTH), MAX_APPID_LENGTH);
+			taskbarItem.appId.ReleaseBuffer();
+
+			if(nButtonGroupType != TTLIB_GROUPTYPE_PINNED)
+			{
+				taskbarItem.pinned = false;
+
+				int nButtonCount;
+				if(TTLib_GetButtonCount(hButtonGroup, &nButtonCount))
+				{
+					for(int j = 0; j < nButtonCount; j++)
+					{
+						HANDLE hButton = TTLib_GetButton(hButtonGroup, j);
+
+						HWND hWnd = TTLib_GetButtonWindow(hButton);
+
+						taskbarItem.windows.push_back(hWnd);
+					}
+				}
+			}
+			else
+			{
+				taskbarItem.pinned = true;
+			}
+
+			taskbarInfo.taskbarItems.push_back(std::move(taskbarItem));
+		}
+	}
+}
+
+void VirtualDesktops::RestoreMonitorsInfo()
+{
+	RestoreTaskbarsInfo();
+
+	// TODO: Wallpaper?
+}
+
+void VirtualDesktops::RestoreTaskbarsInfo()
+{
+	if(!m_TTLIbLoaded)
+		return;
+
+	TaskbarManipulator taskbarManipulator;
+	if(!taskbarManipulator.IsManipulating())
+		return;
+
+	HANDLE hTaskbar = TTLib_GetMainTaskbar();
+	RestoreTaskbarInfo(hTaskbar);
+
+	int nCount;
+	if(TTLib_GetSecondaryTaskbarCount(&nCount))
+	{
+		for(int i = 0; i < nCount; i++)
+		{
+			hTaskbar = TTLib_GetSecondaryTaskbar(i);
+			RestoreTaskbarInfo(hTaskbar);
+		}
+	}
+}
+
+void VirtualDesktops::RestoreTaskbarInfo(HANDLE hTaskbar)
+{
+	HMONITOR hMonitor = TTLib_GetTaskbarMonitor(hTaskbar);
+
+	MONITORINFOEX systemMonitorInfo;
+	systemMonitorInfo.cbSize = sizeof(MONITORINFOEX);
+	if(!GetMonitorInfo(hMonitor, &systemMonitorInfo))
+	{
+		DEBUG_LOG(logERROR) << "GetMonitorInfo failed for monitor " << hMonitor;
+		return;
+	}
+
+	TaskbarInfo &taskbarInfo = m_desktops[m_currentDesktopId].monitorsInfo[systemMonitorInfo.szDevice].taskbarInfo;
+
+	for(const auto &taskbarItem : taskbarInfo.taskbarItems)
+	{
+		// TODO: implement
+		//taskbarItem.
+	}
 }
 
 namespace
@@ -194,7 +435,7 @@ namespace
 		return param.isVisible;
 	}
 
-	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool waitForCompletion, bool activate /*= false*/)
+	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate /*= false*/)
 	{
 		assert(show || !activate); // can't hide and activate
 
@@ -203,11 +444,8 @@ namespace
 			(show ? SWP_SHOWWINDOW : SWP_HIDEWINDOW);
 		bool result = FALSE != SetWindowPos(hWnd, activate ? HWND_TOP : NULL, 0, 0, 0, 0, dwSWPflags);
 
-		if(waitForCompletion)
-		{
-			// Wait for the window to actually show/hide, with a timeout of 200 ms
-			SendMessageTimeout(hWnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 200, NULL);
-		}
+		// Wait for the window to actually show/hide, with a timeout of 200 ms
+		SendMessageTimeout(hWnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 200, NULL);
 
 		return result;
 	}

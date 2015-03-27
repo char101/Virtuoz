@@ -10,10 +10,22 @@ public:
 	VirtualDesktops(VirtualDesktopsConfig config = VirtualDesktopsConfig());
 	~VirtualDesktops();
 
+	VirtualDesktops(const VirtualDesktops &) = delete;
+	VirtualDesktops &operator=(const VirtualDesktops &) = delete;
+
 	void SwitchDesktop(int desktopId);
 
 private:
+	void SwitchDesktopWindows(int desktopId);
+	void SaveMonitorsInfo();
+	void SaveTaskbarsInfo();
+	void SaveTaskbarInfo(HANDLE hTaskbar);
+	void RestoreMonitorsInfo();
+	void RestoreTaskbarsInfo();
+	void RestoreTaskbarInfo(HANDLE hTaskbar);
+
 	VirtualDesktopsConfig m_config;
 	std::vector<DesktopInfo> m_desktops;
 	int m_currentDesktopId = 0;
+	bool m_TTLIbLoaded = false;
 };
