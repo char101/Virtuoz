@@ -100,6 +100,7 @@ bool VirtualDesktopsConfig::HotkeyFromString(const WCHAR *pszString, VirtualDesk
 		{L"TAB",                 VK_TAB},
 		{L"CLEAR",               VK_CLEAR},
 		{L"RETURN",              VK_RETURN},
+		{L"ENTER",               VK_RETURN},  // !!! custom alternative name
 		{L"SHIFT",               VK_SHIFT},
 		{L"CONTROL",             VK_CONTROL},
 		{L"CTRL",                VK_CONTROL},  // !!! custom alternative name
@@ -317,4 +318,226 @@ bool VirtualDesktopsConfig::HotkeyFromString(const WCHAR *pszString, VirtualDesk
 	pHotkey->fsModifiers = fsModifiers;
 
 	return true;
+}
+
+CString VirtualDesktopsConfig::HotkeyToString(const VirtualDesktopsConfigHotkey &hotkey)
+{
+	static const std::unordered_map<UINT, CString> keyNames = {
+		{'0',                   L"0"},
+		{'1',                   L"1"},
+		{'2',                   L"2"},
+		{'3',                   L"3"},
+		{'4',                   L"4"},
+		{'5',                   L"5"},
+		{'6',                   L"6"},
+		{'7',                   L"7"},
+		{'8',                   L"8"},
+		{'9',                   L"9"},
+		{'A',                   L"A"},
+		{'B',                   L"B"},
+		{'C',                   L"C"},
+		{'D',                   L"D"},
+		{'E',                   L"E"},
+		{'F',                   L"F"},
+		{'G',                   L"G"},
+		{'H',                   L"H"},
+		{'I',                   L"I"},
+		{'J',                   L"J"},
+		{'K',                   L"K"},
+		{'L',                   L"L"},
+		{'M',                   L"M"},
+		{'N',                   L"N"},
+		{'O',                   L"O"},
+		{'P',                   L"P"},
+		{'Q',                   L"Q"},
+		{'R',                   L"R"},
+		{'S',                   L"S"},
+		{'T',                   L"T"},
+		{'U',                   L"U"},
+		{'V',                   L"V"},
+		{'W',                   L"W"},
+		{'X',                   L"X"},
+		{'Y',                   L"Y"},
+		{'Z',                   L"Z"},
+		{VK_BACK,                L"Back"},
+		{VK_TAB,                 L"Tab"},
+		{VK_CLEAR,               L"Clear"},
+		//{VK_RETURN,              L"Return"},
+		{VK_RETURN,              L"Enter"},  // !!! custom alternative name
+		{VK_SHIFT,               L"Shift"},
+		//{VK_CONTROL,             L"Control"},
+		{VK_CONTROL,                L"Ctrl"},  // !!! custom alternative name
+		//{VK_MENU,                L"Menu"},
+		{VK_MENU,                 L"Alt"},  // !!! custom alternative name
+		{VK_PAUSE,               L"Pause"},
+		//{VK_CAPITAL,             L"Capital"},
+		{VK_CAPITAL,            L"Capslock"},  // !!! custom alternative name
+		{VK_KANA,                L"Kana"},
+		{VK_HANGEUL,             L"Hangeul"},  // old name - should be here for compatibility
+		{VK_HANGUL,              L"Hangul"},
+		{VK_JUNJA,               L"Junja"},
+		{VK_FINAL,               L"Final"},
+		{VK_HANJA,               L"Hanja"},
+		{VK_KANJI,               L"Kanji"},
+		{VK_ESCAPE,              L"Escape"},
+		//{VK_ESCAPE,                 L"Esc"},  // !!! custom alternative name
+		{VK_CONVERT,             L"Convert"},
+		{VK_NONCONVERT,          L"Nonconvert"},
+		{VK_ACCEPT,              L"Accept"},
+		{VK_MODECHANGE,          L"Modechange"},
+		{VK_SPACE,               L"Space"},
+		{VK_PRIOR,               L"Prior"},
+		{VK_NEXT,                L"Next"},
+		{VK_END,                 L"End"},
+		{VK_HOME,                L"Home"},
+		{VK_LEFT,                L"Left"},
+		{VK_UP,                  L"Up"},
+		{VK_RIGHT,               L"Right"},
+		{VK_DOWN,                L"Down"},
+		{VK_SELECT,              L"Select"},
+		{VK_PRINT,               L"Print"},
+		{VK_EXECUTE,             L"Execute"},
+		{VK_SNAPSHOT,            L"Snapshot"},
+		{VK_INSERT,              L"Insert"},
+		{VK_DELETE,              L"Delete"},
+		//{VK_DELETE,                 L"Del"},  // !!! custom alternative name
+		{VK_HELP,                L"Help"},
+		//{VK_LWIN,                L"LWin"}, // !!! NOT SUPPORTED
+		{VK_LWIN,                 L"Win"},  // !!! custom alternative name
+		//{VK_RWIN,                L"RWin"}, // !!! NOT SUPPORTED
+		{VK_APPS,                L"Apps"},
+		{VK_SLEEP,               L"Sleep"},
+		{VK_NUMPAD0,             L"Numpad0"},
+		{VK_NUMPAD1,             L"Numpad1"},
+		{VK_NUMPAD2,             L"Numpad2"},
+		{VK_NUMPAD3,             L"Numpad3"},
+		{VK_NUMPAD4,             L"Numpad4"},
+		{VK_NUMPAD5,             L"Numpad5"},
+		{VK_NUMPAD6,             L"Numpad6"},
+		{VK_NUMPAD7,             L"Numpad7"},
+		{VK_NUMPAD8,             L"Numpad8"},
+		{VK_NUMPAD9,             L"Numpad9"},
+		{VK_MULTIPLY,            L"Multiply"},
+		{VK_ADD,                 L"Add"},
+		{VK_SEPARATOR,           L"Separator"},
+		{VK_SUBTRACT,            L"Subtract"},
+		{VK_DECIMAL,             L"Decimal"},
+		{VK_DIVIDE,              L"Divide"},
+		{VK_F1,                  L"F1"},
+		{VK_F2,                  L"F2"},
+		{VK_F3,                  L"F3"},
+		{VK_F4,                  L"F4"},
+		{VK_F5,                  L"F5"},
+		{VK_F6,                  L"F6"},
+		{VK_F7,                  L"F7"},
+		{VK_F8,                  L"F8"},
+		{VK_F9,                  L"F9"},
+		{VK_F10,                 L"F10"},
+		{VK_F11,                 L"F11"},
+		{VK_F12,                 L"F12"},
+		{VK_F13,                 L"F13"},
+		{VK_F14,                 L"F14"},
+		{VK_F15,                 L"F15"},
+		{VK_F16,                 L"F16"},
+		{VK_F17,                 L"F17"},
+		{VK_F18,                 L"F18"},
+		{VK_F19,                 L"F19"},
+		{VK_F20,                 L"F20"},
+		{VK_F21,                 L"F21"},
+		{VK_F22,                 L"F22"},
+		{VK_F23,                 L"F23"},
+		{VK_F24,                 L"F24"},
+		{VK_NUMLOCK,             L"Numlock"},
+		{VK_SCROLL,              L"Scroll"},
+		{VK_OEM_NEC_EQUAL,       L"OEM_NEC_EQUAL"},   // '=' key on numpad
+		{VK_OEM_FJ_JISHO,        L"OEM_FJ_JISHO"},   // 'Dictionary' key
+		{VK_OEM_FJ_MASSHOU,      L"OEM_FJ_MASSHOU"},   // 'Unregister word' key
+		{VK_OEM_FJ_TOUROKU,      L"OEM_FJ_TOUROKU"},   // 'Register word' key
+		{VK_OEM_FJ_LOYA,         L"OEM_FJ_LOYA"},   // 'Left OYAYUBI' key
+		{VK_OEM_FJ_ROYA,         L"OEM_FJ_ROYA"},   // 'Right OYAYUBI' key
+		//{VK_LSHIFT,              L"LShift"},  // !! NOT SUPPORTED
+		//{VK_RSHIFT,              L"RShift"},  // !! NOT SUPPORTED
+		//{VK_LCONTROL,            L"LControl"},  // !! NOT SUPPORTED
+		//{VK_RCONTROL,            L"RControl"},  // !! NOT SUPPORTED
+		//{VK_LMENU,               L"LMenu"},  // !! NOT SUPPORTED
+		//{VK_RMENU,               L"RMenu"},  // !! NOT SUPPORTED
+		{VK_BROWSER_BACK,        L"BROWSER_BACK"},
+		{VK_BROWSER_FORWARD,     L"BROWSER_FORWARD"},
+		{VK_BROWSER_REFRESH,     L"BROWSER_REFRESH"},
+		{VK_BROWSER_STOP,        L"BROWSER_STOP"},
+		{VK_BROWSER_SEARCH,      L"BROWSER_SEARCH"},
+		{VK_BROWSER_FAVORITES,   L"BROWSER_FAVORITES"},
+		{VK_BROWSER_HOME,        L"BROWSER_HOME"},
+		{VK_VOLUME_MUTE,         L"VOLUME_MUTE"},
+		{VK_VOLUME_DOWN,         L"VOLUME_DOWN"},
+		{VK_VOLUME_UP,           L"VOLUME_UP"},
+		{VK_MEDIA_NEXT_TRACK,    L"MEDIA_NEXT_TRACK"},
+		{VK_MEDIA_PREV_TRACK,    L"MEDIA_PREV_TRACK"},
+		{VK_MEDIA_STOP,          L"MEDIA_STOP"},
+		{VK_MEDIA_PLAY_PAUSE,    L"MEDIA_PLAY_PAUSE"},
+		{VK_LAUNCH_MAIL,         L"LAUNCH_MAIL"},
+		{VK_LAUNCH_MEDIA_SELECT, L"LAUNCH_MEDIA_SELECT"},
+		{VK_LAUNCH_APP1,         L"LAUNCH_APP1"},
+		{VK_LAUNCH_APP2,         L"LAUNCH_APP2"},
+		{VK_OEM_1,               L"OEM_1"},   // ';:' for US
+		{VK_OEM_PLUS,            L"OEM_PLUS"},   // '+' any country
+		{VK_OEM_COMMA,           L"OEM_COMMA"},   // ',' any country
+		{VK_OEM_MINUS,           L"OEM_MINUS"},   // '-' any country
+		{VK_OEM_PERIOD,          L"OEM_PERIOD"},   // '.' any country
+		{VK_OEM_2,               L"OEM_2"},   // '/?' for US
+		{VK_OEM_3,               L"OEM_3"},   // '`~' for US
+		{VK_OEM_4,               L"OEM_4"},  //  '[{' for US
+		{VK_OEM_5,               L"OEM_5"},  //  '\|' for US
+		{VK_OEM_6,               L"OEM_6"},  //  ']}' for US
+		{VK_OEM_7,               L"OEM_7"},  //  ''"' for US
+		{VK_OEM_8,               L"OEM_8"},
+		{VK_OEM_AX,              L"OEM_AX"},  //  'AX' key on Japanese AX kbd
+		{VK_OEM_102,             L"OEM_102"},  //  "<>" or "\|" on RT 102-key kbd.
+		{VK_ICO_HELP,            L"ICO_HELP"},  //  Help key on ICO
+		{VK_ICO_00,              L"ICO_00"},  //  00 key on ICO
+		{VK_PROCESSKEY,          L"PROCESSKEY"},
+		{VK_ICO_CLEAR,           L"ICO_CLEAR"},
+		{VK_PACKET,              L"PACKET"},
+		{VK_OEM_RESET,           L"OEM_RESET"},
+		{VK_OEM_JUMP,            L"OEM_JUMP"},
+		{VK_OEM_PA1,             L"OEM_PA1"},
+		{VK_OEM_PA2,             L"OEM_PA2"},
+		{VK_OEM_PA3,             L"OEM_PA3"},
+		{VK_OEM_WSCTRL,          L"OEM_WSCTRL"},
+		{VK_OEM_CUSEL,           L"OEM_CUSEL"},
+		{VK_OEM_ATTN,            L"OEM_ATTN"},
+		{VK_OEM_FINISH,          L"OEM_FINISH"},
+		{VK_OEM_COPY,            L"OEM_COPY"},
+		{VK_OEM_AUTO,            L"OEM_AUTO"},
+		{VK_OEM_ENLW,            L"OEM_ENLW"},
+		{VK_OEM_BACKTAB,         L"OEM_BACKTAB"},
+		{VK_ATTN,                L"ATTN"},
+		{VK_CRSEL,               L"CRSEL"},
+		{VK_EXSEL,               L"EXSEL"},
+		{VK_EREOF,               L"EREOF"},
+		{VK_PLAY,                L"PLAY"},
+		{VK_ZOOM,                L"ZOOM"},
+		{VK_NONAME,              L"NONAME"},
+		{VK_PA1,                 L"PA1"},
+		{VK_OEM_CLEAR,           L"OEM_CLEAR"},
+	};
+
+	CString hotkeyName;
+
+	if(hotkey.fsModifiers & MOD_ALT)
+		hotkeyName += L"Alt+";
+	if(hotkey.fsModifiers & MOD_CONTROL)
+		hotkeyName += L"Ctrl+";
+	if(hotkey.fsModifiers & MOD_SHIFT)
+		hotkeyName += L"Shift+";
+	if(hotkey.fsModifiers & MOD_WIN)
+		hotkeyName += L"Win+";
+
+	auto name_it = keyNames.find(hotkey.vk);
+	if(name_it != keyNames.end())
+		hotkeyName += name_it->second;
+	else
+		hotkeyName += L"???";
+
+	return hotkeyName;
 }

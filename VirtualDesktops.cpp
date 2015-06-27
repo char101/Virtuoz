@@ -210,6 +210,16 @@ void VirtualDesktops::OnTaskbarCreated()
 	}
 }
 
+int VirtualDesktops::GetNumberOfDesktops()
+{
+	return static_cast<int>(m_desktops.size());
+}
+
+int VirtualDesktops::GetCurrentDesktop()
+{
+	return m_currentDesktopId;
+}
+
 void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 {
 	assert(desktopId != m_currentDesktopId);

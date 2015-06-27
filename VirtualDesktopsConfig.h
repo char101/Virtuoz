@@ -16,8 +16,10 @@ public:
 		{ '1', MOD_ALT }, { '2', MOD_ALT }, { '3', MOD_ALT }, { '4', MOD_ALT }
 	};
 
+	static bool HotkeyFromString(const WCHAR *pszString, VirtualDesktopsConfigHotkey *pHotkey);
+	static CString HotkeyToString(const VirtualDesktopsConfigHotkey &hotkey);
+
 private:
 	CPath GetIniFilePath();
 	bool LoadFromIniFile();
-	static bool HotkeyFromString(const WCHAR *pszString, VirtualDesktopsConfigHotkey *pHotkey);
 };
