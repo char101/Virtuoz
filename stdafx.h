@@ -20,6 +20,7 @@
 #include <atlbase.h>
 #include <atlstr.h>
 #include <atltypes.h>
+#include <atlpath.h>
 
 #include <atlapp.h>
 
@@ -36,6 +37,7 @@ extern CAppModule _Module;
 #include <cassert>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <memory>
 
 // Custom
