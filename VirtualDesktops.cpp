@@ -135,8 +135,6 @@ VirtualDesktops::VirtualDesktops(VirtualDesktopsConfig config /*= VirtualDesktop
 	{
 		m_TTLIbLoaded = true;
 
-		// TODO: TTLib_LoadIntoExplorer when explorer crashes
-
 		dwError = TTLib_LoadIntoExplorer();
 		if(dwError != TTLIB_OK)
 		{
@@ -193,6 +191,23 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 
 	RestoreMonitorsInfo();
 	EnableTaskbarsRedrawind(true);
+}
+
+void VirtualDesktops::OnTaskbarCreated()
+{
+	if(m_TTLIbLoaded)
+	{
+		if(!TTLib_IsLoadedIntoExplorer())
+		{
+			DWORD dwError = TTLib_LoadIntoExplorer();
+			if(dwError != TTLIB_OK)
+			{
+				DEBUG_LOG(logERROR) << "TTLib_LoadIntoExplorer failed with error " << dwError;
+			}
+		}
+		else
+			assert(false);
+	}
 }
 
 void VirtualDesktops::SwitchDesktopWindows(int desktopId)

@@ -63,3 +63,9 @@ void CMainDlg::OnCancel(UINT uNotifyCode, int nID, CWindow wndCtl)
 {
 	EndDialog(nID);
 }
+
+LRESULT CMainDlg::OnTaskbarCreated(UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	m_virtualDesktops->OnTaskbarCreated();
+	return 0;
+}

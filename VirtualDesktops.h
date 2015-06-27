@@ -14,6 +14,7 @@ public:
 	VirtualDesktops &operator=(const VirtualDesktops &) = delete;
 
 	void SwitchDesktop(int desktopId);
+	void OnTaskbarCreated();
 
 private:
 	void SwitchDesktopWindows(int desktopId);

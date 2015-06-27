@@ -14,6 +14,7 @@ public:
 		COMMAND_ID_HANDLER_EX(ID_APP_ABOUT, OnAppAbout)
 		COMMAND_ID_HANDLER_EX(IDOK, OnOK)
 		COMMAND_ID_HANDLER_EX(IDCANCEL, OnCancel)
+		MESSAGE_HANDLER_EX(m_uTaskbarCreatedMsg, OnTaskbarCreated)
 	END_MSG_MAP()
 
 	BOOL OnInitDialog(CWindow wndFocus, LPARAM lInitParam);
@@ -22,8 +23,10 @@ public:
 	void OnAppAbout(UINT uNotifyCode, int nID, CWindow wndCtl);
 	void OnOK(UINT uNotifyCode, int nID, CWindow wndCtl);
 	void OnCancel(UINT uNotifyCode, int nID, CWindow wndCtl);
+	LRESULT OnTaskbarCreated(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 private:
 	std::unique_ptr<VirtualDesktops> m_virtualDesktops;
 	std::vector<int> m_registeredHotkeys;
+	UINT m_uTaskbarCreatedMsg = RegisterWindowMessage(L"TaskbarCreated");
 };
