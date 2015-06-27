@@ -13,6 +13,18 @@ public:
 		UWM_BRING_TO_FRONT,
 	};
 
+	enum
+	{
+		HOTKEY_DESKTOP = 101,
+		HOTKEY_MOVE_WINDOW_TO_DESKTOP = 1001,
+	};
+
+	enum
+	{
+		RCMENU_DESKTOP = 101,
+		RCMENU_EXIT = 1001,
+	};
+
 	BEGIN_MSG_MAP_EX(CMainDlg)
 		MSG_WM_INITDIALOG(OnInitDialog)
 		MSG_WM_WINDOWPOSCHANGING(OnWindowPosChanging)

@@ -17,6 +17,7 @@ public:
 	void OnTaskbarCreated();
 	int GetNumberOfDesktops();
 	int GetCurrentDesktop();
+	bool MoveWindowToDesktop(HWND hWnd, int desktopId);
 
 private:
 	void SwitchDesktopWindows(int desktopId);

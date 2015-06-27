@@ -15,6 +15,7 @@ public:
 	std::vector<VirtualDesktopsConfigHotkey> hotkeys = std::vector<VirtualDesktopsConfigHotkey> {
 		{ '1', MOD_ALT }, { '2', MOD_ALT }, { '3', MOD_ALT }, { '4', MOD_ALT }
 	};
+	VirtualDesktopsConfigHotkey hotkey_move_window = VirtualDesktopsConfigHotkey{ VK_OEM_3, MOD_ALT };
 
 	static bool HotkeyFromString(const WCHAR *pszString, VirtualDesktopsConfigHotkey *pHotkey);
 	static CString HotkeyToString(const VirtualDesktopsConfigHotkey &hotkey);

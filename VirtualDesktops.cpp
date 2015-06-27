@@ -220,6 +220,31 @@ int VirtualDesktops::GetCurrentDesktop()
 	return m_currentDesktopId;
 }
 
+bool VirtualDesktops::MoveWindowToDesktop(HWND hWnd, int desktopId)
+{
+	if(desktopId == m_currentDesktopId)
+		return false;
+
+	CWindow window(hWnd);
+	DesktopInfo &targetDesktop = m_desktops[desktopId];
+
+	if(window.GetWindowProcessID() != GetCurrentProcessId() &&
+		window.IsWindowVisible())
+	{
+		DWORD dwExStyle = window.GetExStyle();
+		if((dwExStyle & WS_EX_APPWINDOW) || !(dwExStyle & WS_EX_TOOLWINDOW)/* || IsWindowVisibleOnScreen(window)*/)
+		{
+			if(ShowWindowOnSwitch(hWnd, false))
+			{
+				targetDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 {
 	assert(desktopId != m_currentDesktopId);
@@ -250,8 +275,8 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 				// Suppress animation lazily.
 				pSuppressor->Suppress();
 
-				currentDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
-				ShowWindowOnSwitch(hWnd, false);
+				if(ShowWindowOnSwitch(hWnd, false))
+					currentDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
 			}
 		}
 

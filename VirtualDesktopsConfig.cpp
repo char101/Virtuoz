@@ -54,6 +54,16 @@ bool VirtualDesktopsConfig::LoadFromIniFile()
 		}
 	}
 
+	CString hotkeyName;
+	GetPrivateProfileString(L"config", L"hotkey_move_window", NULL, hotkeyName.GetBuffer(MAX_PATH), MAX_PATH, iniFilePath);
+	hotkeyName.ReleaseBuffer();
+
+	if(!HotkeyFromString(hotkeyName, &hotkey_move_window))
+	{
+		hotkey_move_window.vk = VK_OEM_3;
+		hotkey_move_window.fsModifiers = MOD_ALT;
+	}
+
 	return true;
 }
 

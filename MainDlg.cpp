@@ -25,9 +25,9 @@ BOOL CMainDlg::OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 		comboText.Format(L"Desktop %d: ", i + 1);
 		comboText += VirtualDesktopsConfig::HotkeyToString(config.hotkeys[i]);
 
-		if(::RegisterHotKey(m_hWnd, i, config.hotkeys[i].fsModifiers | MOD_NOREPEAT, config.hotkeys[i].vk))
+		if(::RegisterHotKey(m_hWnd, HOTKEY_DESKTOP + i, config.hotkeys[i].fsModifiers | MOD_NOREPEAT, config.hotkeys[i].vk))
 		{
-			m_registeredHotkeys.push_back(i);
+			m_registeredHotkeys.push_back(HOTKEY_DESKTOP + i);
 		}
 		else
 		{
@@ -39,6 +39,16 @@ BOOL CMainDlg::OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 	}
 
 	desksCombo.SetCurSel(0);
+
+	if(::RegisterHotKey(m_hWnd, HOTKEY_MOVE_WINDOW_TO_DESKTOP, 
+		config.hotkey_move_window.fsModifiers | MOD_NOREPEAT, config.hotkey_move_window.vk))
+	{
+		m_registeredHotkeys.push_back(HOTKEY_MOVE_WINDOW_TO_DESKTOP);
+	}
+	else
+	{
+		DEBUG_LOG(logERROR) << "Could not register hotkey_move_window";
+	}
 
 	// Init and show tray icon.
 	InitNotifyIconData();
@@ -58,10 +68,52 @@ void CMainDlg::OnWindowPosChanging(LPWINDOWPOS lpWndPos)
 
 void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 {
-	m_virtualDesktops->SwitchDesktop(nHotKeyID);
+	int numberOfDesktops = m_virtualDesktops->GetNumberOfDesktops();
+	int currentDesktop = m_virtualDesktops->GetCurrentDesktop();
 
-	CComboBox desksCombo(GetDlgItem(IDC_DESKS_COMBO));
-	desksCombo.SetCurSel(nHotKeyID);
+	if(nHotKeyID >= HOTKEY_DESKTOP && nHotKeyID < HOTKEY_DESKTOP + numberOfDesktops)
+	{
+		int nDesktop = nHotKeyID - HOTKEY_DESKTOP;
+		m_virtualDesktops->SwitchDesktop(nDesktop);
+
+		CComboBox desksCombo(GetDlgItem(IDC_DESKS_COMBO));
+		desksCombo.SetCurSel(nDesktop);
+	}
+	else if(nHotKeyID == HOTKEY_MOVE_WINDOW_TO_DESKTOP)
+	{
+		CPoint point;
+		GetCursorPos(&point);
+
+		HWND hMoveWnd = WindowFromPoint(point);
+
+		::SetForegroundWindow(m_hWnd);
+
+		CMenu menu;
+		menu.CreatePopupMenu();
+
+		for(int i = 0; i < numberOfDesktops; i++)
+		{
+			if(i == currentDesktop)
+				continue;
+
+			CString str;
+			str.Format(L"Move to desktop %d", i + 1);
+
+			menu.AppendMenu(MF_STRING, RCMENU_DESKTOP + i, str);
+		}
+
+		int nCmd = menu.TrackPopupMenu(TPM_RIGHTBUTTON | TPM_RETURNCMD, point.x, point.y, m_hWnd);
+
+		if(nCmd >= RCMENU_DESKTOP && nCmd < RCMENU_DESKTOP + numberOfDesktops)
+		{
+			if(hMoveWnd)
+			{
+				hMoveWnd = GetAncestor(hMoveWnd, GA_ROOT);
+				int nDesktop = nCmd - RCMENU_DESKTOP;
+				m_virtualDesktops->MoveWindowToDesktop(hMoveWnd, nDesktop);
+			}
+		}
+	}
 }
 
 LRESULT CMainDlg::OnNotify(int idCtrl, LPNMHDR pnmh)
@@ -165,8 +217,6 @@ void CMainDlg::NotifyIconRightClickMenu()
 	int numberOfDesktops = m_virtualDesktops->GetNumberOfDesktops();
 	int currentDesktop = m_virtualDesktops->GetCurrentDesktop();
 
-	const int nExitId = 10001;
-
 	CMenu menu;
 	menu.CreatePopupMenu();
 
@@ -177,23 +227,25 @@ void CMainDlg::NotifyIconRightClickMenu()
 		CString str;
 		desksCombo.GetLBText(i, str);
 
-		menu.AppendMenu(MF_STRING, i, str);
+		menu.AppendMenu(MF_STRING, RCMENU_DESKTOP + i, str);
 	}
 
 	menu.AppendMenu(MF_SEPARATOR);
-	menu.AppendMenu(MF_STRING, nExitId, L"Exit");
+	menu.AppendMenu(MF_STRING, RCMENU_EXIT, L"Exit");
 
-	menu.CheckMenuRadioItem(0, numberOfDesktops - 1, currentDesktop, MF_BYCOMMAND);
+	menu.CheckMenuRadioItem(RCMENU_DESKTOP, RCMENU_DESKTOP + numberOfDesktops - 1,
+		RCMENU_DESKTOP + currentDesktop, MF_BYCOMMAND);
 
 	CPoint point;
 	GetCursorPos(&point);
 	int nCmd = menu.TrackPopupMenu(TPM_RIGHTBUTTON | TPM_RETURNCMD, point.x, point.y, m_hWnd);
 
-	if(nCmd >= 0 && nCmd < numberOfDesktops)
+	if(nCmd >= RCMENU_DESKTOP && nCmd < RCMENU_DESKTOP + numberOfDesktops)
 	{
-		m_virtualDesktops->SwitchDesktop(nCmd);
-		desksCombo.SetCurSel(nCmd);
+		int nDesktop = nCmd - RCMENU_DESKTOP;
+		m_virtualDesktops->SwitchDesktop(nDesktop);
+		desksCombo.SetCurSel(nDesktop);
 	}
-	else if(nCmd == nExitId)
+	else if(nCmd == RCMENU_EXIT)
 		EndDialog(0);
 }
