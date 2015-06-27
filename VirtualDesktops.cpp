@@ -216,7 +216,8 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 
 		DesktopInfo &currentDesktop = pThis->m_desktops[pThis->m_currentDesktopId];
 
-		if(window.IsWindowVisible())
+		if(window.GetWindowProcessID() != GetCurrentProcessId() &&
+			window.IsWindowVisible())
 		{
 			DWORD dwExStyle = window.GetExStyle();
 			if((dwExStyle & WS_EX_APPWINDOW) || !(dwExStyle & WS_EX_TOOLWINDOW)/* || IsWindowVisibleOnScreen(window)*/)
