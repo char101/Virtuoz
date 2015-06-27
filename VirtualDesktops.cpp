@@ -135,6 +135,8 @@ VirtualDesktops::VirtualDesktops(VirtualDesktopsConfig config /*= VirtualDesktop
 	{
 		m_TTLIbLoaded = true;
 
+		// TODO: TTLib_LoadIntoExplorer when explorer crashes
+
 		dwError = TTLib_LoadIntoExplorer();
 		if(dwError != TTLIB_OK)
 		{
@@ -169,6 +171,14 @@ VirtualDesktops::~VirtualDesktops()
 			ShowWindowOnSwitch(window, true);
 		}
 	}
+
+	if(suppressor.IsSuppressed())
+	{
+		if(!SendMessageTimeout(HWND_BROADCAST, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 7000, NULL))
+		{
+			DEBUG_LOG(logWARNING) << "SendMessageTimeout failed with " << GetLastError();
+		}
+	}
 }
 
 void VirtualDesktops::SwitchDesktop(int desktopId)
@@ -176,11 +186,13 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 	if(desktopId == m_currentDesktopId)
 		return;
 
+	EnableTaskbarsRedrawind(false);
 	SaveMonitorsInfo();
 
 	SwitchDesktopWindows(desktopId);
 
 	RestoreMonitorsInfo();
+	EnableTaskbarsRedrawind(true);
 }
 
 void VirtualDesktops::SwitchDesktopWindows(int desktopId)
@@ -234,6 +246,16 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 	}
 
 	m_desktops[m_currentDesktopId].windowsInfo = WindowsInfo();
+
+	// We wait even if animation is not suppressed,
+	// because we want the taskbars to be ready for reordering.
+	//if(suppressor.IsSuppressed())
+	{
+		if(!SendMessageTimeout(HWND_BROADCAST, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 7000, NULL))
+		{
+			DEBUG_LOG(logWARNING) << "SendMessageTimeout failed with " << GetLastError();
+		}
+	}
 }
 
 void VirtualDesktops::SaveMonitorsInfo()
@@ -330,9 +352,7 @@ void VirtualDesktops::SaveTaskbarInfo(HANDLE hTaskbar)
 					for(int j = 0; j < nButtonCount; j++)
 					{
 						HANDLE hButton = TTLib_GetButton(hButtonGroup, j);
-
 						HWND hWnd = TTLib_GetButtonWindow(hButton);
-
 						taskbarItem.windows.push_back(hWnd);
 					}
 				}
@@ -352,6 +372,8 @@ void VirtualDesktops::RestoreMonitorsInfo()
 	RestoreTaskbarsInfo();
 
 	// TODO: Wallpaper?
+
+	m_desktops[m_currentDesktopId].monitorsInfo.clear();
 }
 
 void VirtualDesktops::RestoreTaskbarsInfo()
@@ -391,10 +413,149 @@ void VirtualDesktops::RestoreTaskbarInfo(HANDLE hTaskbar)
 
 	TaskbarInfo &taskbarInfo = m_desktops[m_currentDesktopId].monitorsInfo[systemMonitorInfo.szDevice].taskbarInfo;
 
-	for(const auto &taskbarItem : taskbarInfo.taskbarItems)
+	int nButtonGroupCount;
+	if(TTLib_GetButtonGroupCount(hTaskbar, &nButtonGroupCount))
 	{
-		// TODO: implement
-		//taskbarItem.
+		int nButtonGroupPosition = 0;
+		std::vector<int> nButtonPositions;
+
+		for(const auto &taskbarItem : taskbarInfo.taskbarItems)
+		{
+			if(taskbarItem.pinned)
+			{
+				for(int i = nButtonGroupPosition; i < nButtonGroupCount; i++)
+				{
+					HANDLE hButtonGroup = TTLib_GetButtonGroup(hTaskbar, i);
+
+					TTLIB_GROUPTYPE nButtonGroupType;
+					if(!TTLib_GetButtonGroupType(hButtonGroup, &nButtonGroupType) ||
+						nButtonGroupType == TTLIB_GROUPTYPE_UNKNOWN ||
+						nButtonGroupType == TTLIB_GROUPTYPE_TEMPORARY)
+					{
+						continue;
+					}
+
+					if(nButtonGroupType != TTLIB_GROUPTYPE_PINNED)
+					{
+						continue;
+					}
+
+					WCHAR szAppId[MAX_APPID_LENGTH];
+					TTLib_GetButtonGroupAppId(hButtonGroup, szAppId, MAX_APPID_LENGTH);
+
+					if(taskbarItem.appId == szAppId)
+					{
+						if(i > nButtonGroupPosition)
+							TTLib_ButtonGroupMove(hTaskbar, i, nButtonGroupPosition);
+						else
+							assert(i == nButtonGroupPosition);
+
+						nButtonGroupPosition++;
+						nButtonPositions.push_back(0);
+						assert(nButtonGroupPosition == nButtonPositions.size());
+						break;
+					}
+				}
+			}
+			else
+			{
+				for(HWND hIterWnd : taskbarItem.windows)
+				{
+					for(int i = 0; i < nButtonGroupCount; i++)
+					{
+						HANDLE hButtonGroup = TTLib_GetButtonGroup(hTaskbar, i);
+
+						TTLIB_GROUPTYPE nButtonGroupType;
+						if(!TTLib_GetButtonGroupType(hButtonGroup, &nButtonGroupType) ||
+							nButtonGroupType == TTLIB_GROUPTYPE_UNKNOWN ||
+							nButtonGroupType == TTLIB_GROUPTYPE_TEMPORARY)
+						{
+							continue;
+						}
+
+						if(nButtonGroupType == TTLIB_GROUPTYPE_PINNED)
+						{
+							continue;
+						}
+
+						int nButtonCount;
+						if(TTLib_GetButtonCount(hButtonGroup, &nButtonCount))
+						{
+							int nStartIndex = 0;
+							if(i < nButtonGroupPosition)
+							{
+								nStartIndex = nButtonPositions[i];
+								assert(nStartIndex > 0);
+							}
+
+							bool found = false;
+							for(int j = nStartIndex; j < nButtonCount; j++)
+							{
+								HANDLE hButton = TTLib_GetButton(hButtonGroup, j);
+								HWND hWnd = TTLib_GetButtonWindow(hButton);
+								if(hWnd == hIterWnd)
+								{
+									int nTargetButtonIndex;
+
+									if(i >= nButtonGroupPosition)
+									{
+										if(i > nButtonGroupPosition)
+											TTLib_ButtonGroupMove(hTaskbar, i, nButtonGroupPosition);
+
+										nTargetButtonIndex = 0;
+
+										nButtonGroupPosition++;
+										nButtonPositions.push_back(1);
+										assert(nButtonGroupPosition == nButtonPositions.size());
+									}
+									else
+									{
+										nTargetButtonIndex = nButtonPositions[i];
+										nButtonPositions[i]++;
+									}
+
+									if(j > nTargetButtonIndex)
+										TTLib_ButtonMoveInButtonGroup(hButtonGroup, j, nTargetButtonIndex);
+									else
+										assert(j == nTargetButtonIndex);
+
+									found = true;
+									break;
+								}
+							}
+
+							if(found)
+								break;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+void VirtualDesktops::EnableTaskbarsRedrawind(bool enable)
+{
+	if(!m_TTLIbLoaded)
+		return;
+
+	TaskbarManipulator taskbarManipulator;
+	if(!taskbarManipulator.IsManipulating())
+		return;
+
+	HANDLE hTaskbar = TTLib_GetMainTaskbar();
+	CWindow taskListWindow = TTLib_GetTaskListWindow(hTaskbar);
+	taskListWindow.SetRedraw(enable);
+
+	int nCount;
+	if(TTLib_GetSecondaryTaskbarCount(&nCount))
+	{
+		for(int i = 0; i < nCount; i++)
+		{
+			hTaskbar = TTLib_GetSecondaryTaskbar(i);
+			taskListWindow = TTLib_GetTaskListWindow(hTaskbar);
+			taskListWindow.SetRedraw(enable);
+		}
 	}
 }
 
@@ -444,8 +605,16 @@ namespace
 			(show ? SWP_SHOWWINDOW : SWP_HIDEWINDOW);
 		bool result = FALSE != SetWindowPos(hWnd, activate ? HWND_TOP : NULL, 0, 0, 0, 0, dwSWPflags);
 
-		// Wait for the window to actually show/hide, with a timeout of 200 ms
-		SendMessageTimeout(hWnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 200, NULL);
+		if(!result)
+		{
+			DEBUG_LOG(logWARNING) << "SetWindowPos failed with " << GetLastError() << " for window " << hWnd;
+		}
+
+		// Wait for the window to actually show/hide, with a timeout of 200 ms.
+		//if(result && !SendMessageTimeout(hWnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 200, NULL))
+		//{
+		//	DEBUG_LOG(logWARNING) << "SendMessageTimeout failed with " << GetLastError() << " for window " << hWnd;
+		//}
 
 		return result;
 	}

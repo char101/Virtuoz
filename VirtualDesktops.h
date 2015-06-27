@@ -23,6 +23,7 @@ private:
 	void RestoreMonitorsInfo();
 	void RestoreTaskbarsInfo();
 	void RestoreTaskbarInfo(HANDLE hTaskbar);
+	void EnableTaskbarsRedrawind(bool enable);
 
 	VirtualDesktopsConfig m_config;
 	std::vector<DesktopInfo> m_desktops;
