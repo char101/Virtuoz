@@ -47,7 +47,7 @@ bool VirtualDesktopsConfig::LoadFromIniFile()
 
 		if(!HotkeyFromString(hotkeyName, &hotkeys[i]))
 		{
-			static char *pDefaultKeys = "1234567890qwertyuiop";
+			static const char pDefaultKeys[] = "1234567890qwertyuiop";
 
 			hotkeys[i].vk = pDefaultKeys[i];
 			hotkeys[i].fsModifiers = MOD_ALT;
