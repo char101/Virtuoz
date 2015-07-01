@@ -172,7 +172,7 @@ VirtualDesktops::~VirtualDesktops()
 
 	if(suppressor.IsSuppressed())
 	{
-		if(!SendMessageTimeout(HWND_BROADCAST, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 2000, NULL))
+		if(!SendMessageTimeout(HWND_BROADCAST, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 100, NULL))
 		{
 			DEBUG_LOG(logWARNING) << "SendMessageTimeout failed with " << GetLastError();
 		}
@@ -302,7 +302,7 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 	// because we want the taskbars to be ready for reordering.
 	//if(suppressor.IsSuppressed())
 	{
-		if(!SendMessageTimeout(HWND_BROADCAST, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 2000, NULL))
+		if(!SendMessageTimeout(HWND_BROADCAST, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 100, NULL))
 		{
 			DEBUG_LOG(logWARNING) << "SendMessageTimeout failed with " << GetLastError();
 		}
