@@ -220,6 +220,23 @@ int VirtualDesktops::GetCurrentDesktop()
 	return m_currentDesktopId;
 }
 
+bool VirtualDesktops::CanMoveWindowToDesktop(HWND hWnd)
+{
+	CWindow window(hWnd);
+
+	if(window.GetWindowProcessID() != GetCurrentProcessId() &&
+		window.IsWindowVisible())
+	{
+		DWORD dwExStyle = window.GetExStyle();
+		if((dwExStyle & WS_EX_APPWINDOW) || !(dwExStyle & WS_EX_TOOLWINDOW)/* || IsWindowVisibleOnScreen(window)*/)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool VirtualDesktops::MoveWindowToDesktop(HWND hWnd, int desktopId)
 {
 	if(desktopId == m_currentDesktopId)

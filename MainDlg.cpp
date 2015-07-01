@@ -85,6 +85,9 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 		GetCursorPos(&point);
 
 		HWND hMoveWnd = WindowFromPoint(point);
+		if(hMoveWnd)
+			hMoveWnd = GetAncestor(hMoveWnd, GA_ROOT);
+		bool canMove = hMoveWnd && m_virtualDesktops->CanMoveWindowToDesktop(hMoveWnd);
 
 		::SetForegroundWindow(m_hWnd);
 
@@ -99,19 +102,15 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 			CString str;
 			str.Format(L"Move to desktop %d", i + 1);
 
-			menu.AppendMenu(MF_STRING, RCMENU_DESKTOP + i, str);
+			menu.AppendMenu(MF_STRING | (canMove ? 0 : MF_DISABLED), RCMENU_DESKTOP + i, str);
 		}
 
 		int nCmd = menu.TrackPopupMenu(TPM_RIGHTBUTTON | TPM_RETURNCMD, point.x, point.y, m_hWnd);
 
 		if(nCmd >= RCMENU_DESKTOP && nCmd < RCMENU_DESKTOP + numberOfDesktops)
 		{
-			if(hMoveWnd)
-			{
-				hMoveWnd = GetAncestor(hMoveWnd, GA_ROOT);
-				int nDesktop = nCmd - RCMENU_DESKTOP;
-				m_virtualDesktops->MoveWindowToDesktop(hMoveWnd, nDesktop);
-			}
+			int nDesktop = nCmd - RCMENU_DESKTOP;
+			m_virtualDesktops->MoveWindowToDesktop(hMoveWnd, nDesktop);
 		}
 	}
 }
