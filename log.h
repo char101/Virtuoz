@@ -1,6 +1,8 @@
 #ifndef __LOG_H__
 #define __LOG_H__
 
+#ifdef _DEBUG
+
 #include <sstream>
 #include <string>
 #include <stdio.h>
@@ -187,5 +189,15 @@ inline std::string NowTime()
 }
 
 #endif //WIN32
+
+#else // !_DEBUG
+
+#include <iostream>
+
+// http://stackoverflow.com/a/11826787
+#define DEBUG_LOG(level) \
+    if (true) {} else std::cerr
+
+#endif // _DEBUG
 
 #endif //__LOG_H__
