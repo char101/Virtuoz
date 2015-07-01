@@ -282,8 +282,6 @@ bool VirtualDesktopsConfig::HotkeyFromString(const WCHAR *pszString, VirtualDesk
 		strSingleKey.Trim();
 		if(!strSingleKey.IsEmpty())
 		{
-			DEBUG_LOG(logINFO) << "Processing key " << CStringA(strSingleKey);
-
 			strSingleKey.MakeUpper();
 			auto key_it = keys.find(std::wstring(strSingleKey));
 			if(key_it == keys.end())
