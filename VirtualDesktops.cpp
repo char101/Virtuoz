@@ -596,7 +596,16 @@ void VirtualDesktops::EnableTaskbarsRedrawind(bool enable)
 
 	HANDLE hTaskbar = TTLib_GetMainTaskbar();
 	CWindow taskListWindow = TTLib_GetTaskListWindow(hTaskbar);
-	taskListWindow.SetRedraw(enable);
+	if(enable)
+	{
+		taskListWindow.EnableWindow(TRUE);
+		taskListWindow.SetRedraw(TRUE);
+	}
+	else
+	{
+		taskListWindow.SetRedraw(FALSE);
+		taskListWindow.EnableWindow(FALSE);
+	}
 
 	int nCount;
 	if(TTLib_GetSecondaryTaskbarCount(&nCount))
@@ -605,7 +614,16 @@ void VirtualDesktops::EnableTaskbarsRedrawind(bool enable)
 		{
 			hTaskbar = TTLib_GetSecondaryTaskbar(i);
 			taskListWindow = TTLib_GetTaskListWindow(hTaskbar);
-			taskListWindow.SetRedraw(enable);
+			if(enable)
+			{
+				taskListWindow.EnableWindow(TRUE);
+				taskListWindow.SetRedraw(TRUE);
+			}
+			else
+			{
+				taskListWindow.SetRedraw(FALSE);
+				taskListWindow.EnableWindow(FALSE);
+			}
 		}
 	}
 }
