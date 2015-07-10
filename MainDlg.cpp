@@ -100,7 +100,7 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 				continue;
 
 			CString str;
-			str.Format(L"Move to desktop %d", i + 1);
+			str.Format(L"Move to desktop &%d", i + 1);
 
 			menu.AppendMenu(MF_STRING | (canMove ? 0 : MF_DISABLED), RCMENU_DESKTOP + i, str);
 		}
