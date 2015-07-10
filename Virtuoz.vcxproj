@@ -211,7 +211,6 @@
     </Midl>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="SetWindowPosTimeout.cpp" />
     <ClCompile Include="VirtualDesktopsConfig.cpp" />
     <ClCompile Include="MainDlg.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -225,7 +224,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="log.h" />
-    <ClInclude Include="SetWindowPosTimeout.h" />
     <ClInclude Include="VirtualDesktopsConfig.h" />
     <ClInclude Include="MainDlg.h" />
     <ClInclude Include="resource.h" />

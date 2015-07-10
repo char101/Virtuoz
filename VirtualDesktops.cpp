@@ -1,8 +1,6 @@
 #include "stdafx.h"
 #include "VirtualDesktops.h"
 
-#include "SetWindowPosTimeout.h"
-
 #define SHOW_WINDOW_TIMEOUT      100
 #define WAIT_FOR_WINDOWS_TIMEOUT 500
 
@@ -871,16 +869,44 @@ namespace
 	{
 		assert(show || !activate); // can't hide and activate
 
-		DWORD dwSWPflags = SWP_NOMOVE | SWP_NOSIZE | //SWP_ASYNCWINDOWPOS |
+		DWORD dwSWPflags = SWP_NOMOVE | SWP_NOSIZE | SWP_ASYNCWINDOWPOS |
 			(activate ? 0 : SWP_NOACTIVATE) | SWP_NOZORDER |
 			(show ? SWP_SHOWWINDOW : SWP_HIDEWINDOW);
-		bool result = FALSE != SetWindowPosTimeout(hWnd, activate ? HWND_TOP : NULL, 0, 0, 0, 0, dwSWPflags, dwTimeout);
-
-		if(!result)
+		if(!SetWindowPos(hWnd, activate ? HWND_TOP : NULL, 0, 0, 0, 0, dwSWPflags))
 		{
 			DEBUG_LOG(logWARNING) << "SetWindowPos failed with " << GetLastError() << " for window " << hWnd;
+			return false;
 		}
 
-		return result;
+		DWORD dwStartTime = GetTickCount();
+		DWORD dwTimeLeft = dwTimeout;
+		bool waitSucceeded = false;
+
+		while(dwTimeLeft > 10)
+		{
+			if(!IsWindow(hWnd))
+				break;
+
+			if(show ? IsWindowVisible(hWnd) : !IsWindowVisible(hWnd))
+			{
+				waitSucceeded = true;
+				break;
+			}
+
+			Sleep(10);
+
+			DWORD dwTime = GetTickCount();
+			if(dwTime >= dwStartTime + dwTimeout)
+				break;
+
+			dwTimeLeft = (dwStartTime + dwTimeout) - dwTime;
+		}
+
+		if(!waitSucceeded)
+		{
+			DEBUG_LOG(logWARNING) << "ShowWindowOnSwitch timeout for window " << hWnd;
+		}
+
+		return true;
 	}
 }
