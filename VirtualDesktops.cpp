@@ -687,7 +687,7 @@ namespace
 		assert(show || !activate); // can't hide and activate
 
 		DWORD dwSWPflags = SWP_NOMOVE | SWP_NOSIZE | SWP_ASYNCWINDOWPOS |
-			(activate ? 0 : SWP_NOACTIVATE | SWP_NOZORDER) |
+			(activate ? 0 : SWP_NOACTIVATE) | SWP_NOZORDER |
 			(show ? SWP_SHOWWINDOW : SWP_HIDEWINDOW);
 		bool result = FALSE != SetWindowPos(hWnd, activate ? HWND_TOP : NULL, 0, 0, 0, 0, dwSWPflags);
 
