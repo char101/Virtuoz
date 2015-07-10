@@ -30,6 +30,9 @@
     <ClCompile Include="VirtualDesktopsConfig.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SetWindowPosTimeout.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -48,6 +51,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="log.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SetWindowPosTimeout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

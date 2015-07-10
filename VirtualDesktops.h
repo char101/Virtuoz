@@ -21,6 +21,8 @@ public:
 	bool MoveWindowToDesktop(HWND hWnd, int desktopId);
 
 private:
+	bool CreateFooWindow();
+	void DestroyFooWindow();
 	void SwitchDesktopWindows(int desktopId);
 	void SaveMonitorsInfo();
 	void SaveTaskbarsInfo();
@@ -28,10 +30,14 @@ private:
 	void RestoreMonitorsInfo();
 	void RestoreTaskbarsInfo();
 	void RestoreTaskbarInfo(HANDLE hTaskbar);
+	void WaitForTaskbarIdle();
+	bool FindWindowOnTaskbar(HANDLE hTaskbar, HWND hWnd);
 	void EnableTaskbarsRedrawind(bool enable);
+	void WaitForWindows(std::vector<HWND> windows, DWORD dwTimeout);
 
 	VirtualDesktopsConfig m_config;
 	std::vector<DesktopInfo> m_desktops;
 	int m_currentDesktopId = 0;
 	bool m_TTLIbLoaded = false;
+	CWindow m_fooWindow;
 };

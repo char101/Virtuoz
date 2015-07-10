@@ -1,6 +1,11 @@
 #include "stdafx.h"
 #include "VirtualDesktops.h"
 
+#include "SetWindowPosTimeout.h"
+
+#define SHOW_WINDOW_TIMEOUT      100
+#define WAIT_FOR_WINDOWS_TIMEOUT 500
+
 // http://stackoverflow.com/a/6088475
 class WindowsAnimationSuppressor
 {
@@ -92,7 +97,7 @@ private:
 namespace
 {
 	bool IsWindowVisibleOnScreen(HWND hWnd);
-	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate = false);
+	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate = false, DWORD dwTimeout = SHOW_WINDOW_TIMEOUT);
 }
 
 struct TaskbarItem
@@ -128,6 +133,8 @@ struct DesktopInfo
 VirtualDesktops::VirtualDesktops(VirtualDesktopsConfig config /*= VirtualDesktopsConfig()*/)
 	: m_config(config)
 {
+	CreateFooWindow();
+
 	m_desktops.resize(config.numberOfDesktops);
 
 	DWORD dwError = TTLib_Init();
@@ -157,6 +164,8 @@ VirtualDesktops::~VirtualDesktops()
 
 	WindowsAnimationSuppressor suppressor(false);
 
+	std::vector<HWND> windowsShown;
+
 	for(DesktopInfo &desktop : m_desktops)
 	{
 		auto &windows = desktop.windowsInfo.zOrderedWindows;
@@ -166,17 +175,19 @@ VirtualDesktops::~VirtualDesktops()
 			suppressor.Suppress();
 
 			CWindow window(*i);
-			ShowWindowOnSwitch(window, true);
+			if(ShowWindowOnSwitch(window, true))
+			{
+				windowsShown.push_back(window);
+			}
 		}
 	}
 
 	if(suppressor.IsSuppressed())
 	{
-		if(!SendMessageTimeout(HWND_BROADCAST, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 100, NULL))
-		{
-			DEBUG_LOG(logWARNING) << "SendMessageTimeout failed with " << GetLastError();
-		}
+		WaitForWindows(windowsShown, WAIT_FOR_WINDOWS_TIMEOUT);
 	}
+
+	DestroyFooWindow();
 }
 
 void VirtualDesktops::SwitchDesktop(int desktopId)
@@ -188,6 +199,8 @@ void VirtualDesktops::SwitchDesktop(int desktopId)
 	SaveMonitorsInfo();
 
 	SwitchDesktopWindows(desktopId);
+
+	WaitForTaskbarIdle();
 
 	RestoreMonitorsInfo();
 	EnableTaskbarsRedrawind(true);
@@ -262,16 +275,53 @@ bool VirtualDesktops::MoveWindowToDesktop(HWND hWnd, int desktopId)
 	return false;
 }
 
+bool VirtualDesktops::CreateFooWindow()
+{
+	WNDCLASS wndclass = { 0 };
+	wndclass.lpfnWndProc = DefWindowProc;
+	wndclass.hInstance = GetModuleHandle(NULL);
+	wndclass.lpszClassName = L"VirtuozFooWnd";
+
+	ATOM atom = RegisterClass(&wndclass);
+	if(atom)
+	{
+		if(m_fooWindow.Create(wndclass.lpszClassName, NULL, NULL, NULL, WS_POPUP | WS_DISABLED))
+		{
+			return true;
+		}
+
+		UnregisterClass(MAKEINTATOM(atom), wndclass.hInstance);
+	}
+
+	DEBUG_LOG(logERROR) << "Something went wrong while creating fooWindow";
+
+	return false;
+}
+
+void VirtualDesktops::DestroyFooWindow()
+{
+	if(!m_fooWindow)
+	{
+		return;
+	}
+
+	m_fooWindow.DestroyWindow();
+	UnregisterClass(L"VirtuozFooWnd", GetModuleHandle(NULL));
+}
+
 void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 {
 	assert(desktopId != m_currentDesktopId);
 
 	WindowsAnimationSuppressor suppressor(false);
 
+	std::vector<HWND> windowsShown;
+
 	struct CALLBACK_PARAM {
 		VirtualDesktops *pThis;
 		WindowsAnimationSuppressor *pSuppressor;
-	} param = { this, &suppressor };
+		std::vector<HWND> *pWindowsShown;
+	} param = { this, &suppressor, &windowsShown };
 
 	m_desktops[m_currentDesktopId].windowsInfo.hForegroundWindow = GetForegroundWindow();
 
@@ -280,6 +330,7 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 		CALLBACK_PARAM *pParam = reinterpret_cast<CALLBACK_PARAM *>(lParam);
 		VirtualDesktops *pThis = pParam->pThis;
 		WindowsAnimationSuppressor *pSuppressor = pParam->pSuppressor;
+		std::vector<HWND> *pWindowsShown = pParam->pWindowsShown;
 
 		DesktopInfo &currentDesktop = pThis->m_desktops[pThis->m_currentDesktopId];
 
@@ -293,7 +344,10 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 				pSuppressor->Suppress();
 
 				if(ShowWindowOnSwitch(hWnd, false))
+				{
 					currentDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
+					pWindowsShown->push_back(hWnd);
+				}
 			}
 		}
 
@@ -310,7 +364,10 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 		suppressor.Suppress();
 
 		CWindow window(*i);
-		ShowWindowOnSwitch(window, true, window == hForegroundWindow);
+		if(ShowWindowOnSwitch(window, true, window == hForegroundWindow))
+		{
+			windowsShown.push_back(window);
+		}
 	}
 
 	m_desktops[m_currentDesktopId].windowsInfo = WindowsInfo();
@@ -319,10 +376,7 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 	// because we want the taskbars to be ready for reordering.
 	//if(suppressor.IsSuppressed())
 	{
-		if(!SendMessageTimeout(HWND_BROADCAST, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 100, NULL))
-		{
-			DEBUG_LOG(logWARNING) << "SendMessageTimeout failed with " << GetLastError();
-		}
+		WaitForWindows(windowsShown, WAIT_FOR_WINDOWS_TIMEOUT);
 	}
 }
 
@@ -602,6 +656,114 @@ void VirtualDesktops::RestoreTaskbarInfo(HANDLE hTaskbar)
 	}
 }
 
+void VirtualDesktops::WaitForTaskbarIdle()
+{
+	if(!m_TTLIbLoaded || !m_fooWindow)
+		return;
+
+	m_fooWindow.ShowWindow(SW_SHOWNA);
+
+	bool found = false;
+	while(!found)
+	{
+		TaskbarManipulator taskbarManipulator;
+		if(!taskbarManipulator.IsManipulating())
+			break;
+
+		HANDLE hTaskbar = TTLib_GetMainTaskbar();
+		if(FindWindowOnTaskbar(hTaskbar, m_fooWindow))
+		{
+			found = true;
+			break;
+		}
+
+		int nCount;
+		if(TTLib_GetSecondaryTaskbarCount(&nCount))
+		{
+			for(int i = 0; i < nCount; i++)
+			{
+				hTaskbar = TTLib_GetSecondaryTaskbar(i);
+				if(FindWindowOnTaskbar(hTaskbar, m_fooWindow))
+				{
+					found = true;
+					break;
+				}
+			}
+		}
+	}
+
+	m_fooWindow.ShowWindow(SW_HIDE);
+
+	while(found)
+	{
+		found = false;
+
+		TaskbarManipulator taskbarManipulator;
+		if(!taskbarManipulator.IsManipulating())
+			break;
+
+		HANDLE hTaskbar = TTLib_GetMainTaskbar();
+		if(FindWindowOnTaskbar(hTaskbar, m_fooWindow))
+		{
+			found = true;
+			continue;
+		}
+
+		int nCount;
+		if(TTLib_GetSecondaryTaskbarCount(&nCount))
+		{
+			for(int i = 0; i < nCount; i++)
+			{
+				hTaskbar = TTLib_GetSecondaryTaskbar(i);
+				if(FindWindowOnTaskbar(hTaskbar, m_fooWindow))
+				{
+					found = true;
+					break;
+				}
+			}
+		}
+	}
+}
+
+bool VirtualDesktops::FindWindowOnTaskbar(HANDLE hTaskbar, HWND hWnd)
+{
+	int nButtonGroupCount;
+	if(TTLib_GetButtonGroupCount(hTaskbar, &nButtonGroupCount))
+	{
+		for(int i = 0; i < nButtonGroupCount; i++)
+		{
+			HANDLE hButtonGroup = TTLib_GetButtonGroup(hTaskbar, i);
+
+			TTLIB_GROUPTYPE nButtonGroupType;
+			if(!TTLib_GetButtonGroupType(hButtonGroup, &nButtonGroupType))
+			{
+				continue;
+			}
+
+			if(nButtonGroupType != TTLIB_GROUPTYPE_NORMAL &&
+				nButtonGroupType != TTLIB_GROUPTYPE_COMBINED)
+			{
+				continue;
+			}
+
+			int nButtonCount;
+			if(TTLib_GetButtonCount(hButtonGroup, &nButtonCount))
+			{
+				for(int j = 0; j < nButtonCount; j++)
+				{
+					HANDLE hButton = TTLib_GetButton(hButtonGroup, j);
+					if(hWnd == TTLib_GetButtonWindow(hButton))
+					{
+						return true;
+					}
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 void VirtualDesktops::EnableTaskbarsRedrawind(bool enable)
 {
 	if(!m_TTLIbLoaded)
@@ -645,6 +807,29 @@ void VirtualDesktops::EnableTaskbarsRedrawind(bool enable)
 	}
 }
 
+void VirtualDesktops::WaitForWindows(std::vector<HWND> windows, DWORD dwTimeout)
+{
+	DWORD dwStartTime = GetTickCount();
+	DWORD dwTimeLeft = dwTimeout;
+
+	for(auto &hWnd : windows)
+	{
+		if(!SendMessageTimeout(hWnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, dwTimeLeft, NULL))
+		{
+			DEBUG_LOG(logWARNING) << "SendMessageTimeout failed for window " << hWnd;
+		}
+
+		DWORD dwTime = GetTickCount();
+		if(dwTime >= dwStartTime + dwTimeout)
+		{
+			DEBUG_LOG(logWARNING) << "WaitForWindows timeout for window " << hWnd;
+			return;
+		}
+
+		dwTimeLeft = (dwStartTime + dwTimeout) - dwTime;
+	}
+}
+
 namespace
 {
 	bool IsWindowVisibleOnScreen(HWND hWnd)
@@ -682,25 +867,19 @@ namespace
 		return param.isVisible;
 	}
 
-	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate /*= false*/)
+	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate /*= false*/, DWORD dwTimeout /*= SHOW_WINDOW_TIMEOUT*/)
 	{
 		assert(show || !activate); // can't hide and activate
 
-		DWORD dwSWPflags = SWP_NOMOVE | SWP_NOSIZE | SWP_ASYNCWINDOWPOS |
+		DWORD dwSWPflags = SWP_NOMOVE | SWP_NOSIZE | //SWP_ASYNCWINDOWPOS |
 			(activate ? 0 : SWP_NOACTIVATE) | SWP_NOZORDER |
 			(show ? SWP_SHOWWINDOW : SWP_HIDEWINDOW);
-		bool result = FALSE != SetWindowPos(hWnd, activate ? HWND_TOP : NULL, 0, 0, 0, 0, dwSWPflags);
+		bool result = FALSE != SetWindowPosTimeout(hWnd, activate ? HWND_TOP : NULL, 0, 0, 0, 0, dwSWPflags, dwTimeout);
 
 		if(!result)
 		{
 			DEBUG_LOG(logWARNING) << "SetWindowPos failed with " << GetLastError() << " for window " << hWnd;
 		}
-
-		// Wait for the window to actually show/hide, with a timeout of 200 ms.
-		//if(result && !SendMessageTimeout(hWnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 200, NULL))
-		//{
-		//	DEBUG_LOG(logWARNING) << "SendMessageTimeout failed with " << GetLastError() << " for window " << hWnd;
-		//}
 
 		return result;
 	}
