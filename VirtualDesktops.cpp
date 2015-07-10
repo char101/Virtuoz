@@ -323,6 +323,7 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 	} param = { this, &suppressor, &windowsShown };
 
 	m_desktops[m_currentDesktopId].windowsInfo.hForegroundWindow = GetForegroundWindow();
+	SetForegroundWindow(GetDesktopWindow());
 
 	EnumWindows([](HWND hWnd, LPARAM lParam) {
 		CWindow window(hWnd);
@@ -365,6 +366,9 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 		CWindow window(*i);
 		if(ShowWindowOnSwitch(window, true, window == hForegroundWindow))
 		{
+			if(window == hForegroundWindow)
+				SetForegroundWindow(window);
+
 			windowsShown.push_back(window);
 		}
 	}
