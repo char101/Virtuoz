@@ -3,6 +3,7 @@
 
 #define SHOW_WINDOW_TIMEOUT      100
 #define WAIT_FOR_WINDOWS_TIMEOUT 500
+#define FOO_WND_CLASS_NAME       L"VirtuozFooWnd"
 
 // http://stackoverflow.com/a/6088475
 class WindowsAnimationSuppressor
@@ -278,7 +279,7 @@ bool VirtualDesktops::CreateFooWindow()
 	WNDCLASS wndclass = { 0 };
 	wndclass.lpfnWndProc = DefWindowProc;
 	wndclass.hInstance = GetModuleHandle(NULL);
-	wndclass.lpszClassName = L"VirtuozFooWnd";
+	wndclass.lpszClassName = FOO_WND_CLASS_NAME;
 
 	ATOM atom = RegisterClass(&wndclass);
 	if(atom)
@@ -304,7 +305,7 @@ void VirtualDesktops::DestroyFooWindow()
 	}
 
 	m_fooWindow.DestroyWindow();
-	UnregisterClass(L"VirtuozFooWnd", GetModuleHandle(NULL));
+	UnregisterClass(FOO_WND_CLASS_NAME, GetModuleHandle(NULL));
 }
 
 void VirtualDesktops::SwitchDesktopWindows(int desktopId)
