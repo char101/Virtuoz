@@ -317,14 +317,26 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 
 	std::vector<HWND> windowsHidden, windowsShown;
 
+	bool currentProcessIsForeground = false;
+	CWindow foregroundWindow = GetForegroundWindow();
+	if(foregroundWindow)
+	{
+		if(foregroundWindow.GetWindowProcessID() == GetCurrentProcessId())
+		{
+			currentProcessIsForeground = true;
+		}
+		else
+		{
+			m_desktops[m_currentDesktopId].windowsInfo.hForegroundWindow = GetForegroundWindow();
+			SetForegroundWindow(GetDesktopWindow());
+		}
+	}
+
 	struct CALLBACK_PARAM {
 		VirtualDesktops *pThis;
 		WindowsAnimationSuppressor *pSuppressor;
 		std::vector<HWND> *pWindowsHidden;
 	} param = { this, &suppressor, &windowsHidden };
-
-	m_desktops[m_currentDesktopId].windowsInfo.hForegroundWindow = GetForegroundWindow();
-	SetForegroundWindow(GetDesktopWindow());
 
 	EnumWindows([](HWND hWnd, LPARAM lParam) {
 		CWindow window(hWnd);
@@ -358,16 +370,20 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 	m_currentDesktopId = desktopId;
 
 	auto &windows = m_desktops[m_currentDesktopId].windowsInfo.zOrderedWindows;
-	HWND hForegroundWindow = m_desktops[m_currentDesktopId].windowsInfo.hForegroundWindow;
+	HWND hNewForegroundWindow = NULL;
+
+	if(!currentProcessIsForeground)
+		hNewForegroundWindow = m_desktops[m_currentDesktopId].windowsInfo.hForegroundWindow;
+
 	for(auto i = windows.rbegin(); i != windows.rend(); ++i)
 	{
 		// Suppress animation lazily.
 		suppressor.Suppress();
 
 		CWindow window(*i);
-		if(ShowWindowOnSwitch(window, true, window == hForegroundWindow))
+		if(ShowWindowOnSwitch(window, true))
 		{
-			if(window == hForegroundWindow)
+			if(window == hNewForegroundWindow)
 				SetForegroundWindow(window);
 
 			windowsShown.push_back(window);
