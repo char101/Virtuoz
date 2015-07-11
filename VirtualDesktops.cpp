@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "VirtualDesktops.h"
 
-#define SHOW_WINDOW_TIMEOUT      100
 #define WAIT_FOR_WINDOWS_TIMEOUT 500
 #define FOO_WND_CLASS_NAME       L"VirtuozFooWnd"
 
@@ -96,7 +95,9 @@ private:
 namespace
 {
 	bool IsWindowVisibleOnScreen(HWND hWnd);
-	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate = false, DWORD dwTimeout = SHOW_WINDOW_TIMEOUT);
+	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate = false);
+	void WaitForWindows(std::vector<HWND> hiddenWindows, std::vector<HWND> shownWindows, DWORD dwTimeout = WAIT_FOR_WINDOWS_TIMEOUT);
+	void WaitForShownWindows(std::vector<HWND> windows, bool shown, DWORD dwTimeout);
 }
 
 struct TaskbarItem
@@ -183,7 +184,7 @@ VirtualDesktops::~VirtualDesktops()
 
 	if(suppressor.IsSuppressed())
 	{
-		WaitForWindows(windowsShown, WAIT_FOR_WINDOWS_TIMEOUT);
+		WaitForWindows(std::vector<HWND>(), windowsShown);
 	}
 
 	DestroyFooWindow();
@@ -314,13 +315,13 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 
 	WindowsAnimationSuppressor suppressor(false);
 
-	std::vector<HWND> windowsShown;
+	std::vector<HWND> windowsHidden, windowsShown;
 
 	struct CALLBACK_PARAM {
 		VirtualDesktops *pThis;
 		WindowsAnimationSuppressor *pSuppressor;
-		std::vector<HWND> *pWindowsShown;
-	} param = { this, &suppressor, &windowsShown };
+		std::vector<HWND> *pWindowsHidden;
+	} param = { this, &suppressor, &windowsHidden };
 
 	m_desktops[m_currentDesktopId].windowsInfo.hForegroundWindow = GetForegroundWindow();
 	SetForegroundWindow(GetDesktopWindow());
@@ -330,7 +331,7 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 		CALLBACK_PARAM *pParam = reinterpret_cast<CALLBACK_PARAM *>(lParam);
 		VirtualDesktops *pThis = pParam->pThis;
 		WindowsAnimationSuppressor *pSuppressor = pParam->pSuppressor;
-		std::vector<HWND> *pWindowsShown = pParam->pWindowsShown;
+		std::vector<HWND> *pWindowsHidden = pParam->pWindowsHidden;
 
 		DesktopInfo &currentDesktop = pThis->m_desktops[pThis->m_currentDesktopId];
 
@@ -346,7 +347,7 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 				if(ShowWindowOnSwitch(hWnd, false))
 				{
 					currentDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
-					pWindowsShown->push_back(hWnd);
+					pWindowsHidden->push_back(hWnd);
 				}
 			}
 		}
@@ -379,7 +380,7 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 	// because we want the taskbars to be ready for reordering.
 	//if(suppressor.IsSuppressed())
 	{
-		WaitForWindows(windowsShown, WAIT_FOR_WINDOWS_TIMEOUT);
+		WaitForWindows(windowsHidden, windowsShown);
 	}
 }
 
@@ -810,29 +811,6 @@ void VirtualDesktops::EnableTaskbarsRedrawind(bool enable)
 	}
 }
 
-void VirtualDesktops::WaitForWindows(std::vector<HWND> windows, DWORD dwTimeout)
-{
-	DWORD dwStartTime = GetTickCount();
-	DWORD dwTimeLeft = dwTimeout;
-
-	for(auto &hWnd : windows)
-	{
-		if(!SendMessageTimeout(hWnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, dwTimeLeft, NULL))
-		{
-			DEBUG_LOG(logWARNING) << "SendMessageTimeout failed for window " << hWnd;
-		}
-
-		DWORD dwTime = GetTickCount();
-		if(dwTime >= dwStartTime + dwTimeout)
-		{
-			DEBUG_LOG(logWARNING) << "WaitForWindows timeout for window " << hWnd;
-			return;
-		}
-
-		dwTimeLeft = (dwStartTime + dwTimeout) - dwTime;
-	}
-}
-
 namespace
 {
 	bool IsWindowVisibleOnScreen(HWND hWnd)
@@ -870,7 +848,7 @@ namespace
 		return param.isVisible;
 	}
 
-	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate /*= false*/, DWORD dwTimeout /*= SHOW_WINDOW_TIMEOUT*/)
+	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate /*= false*/)
 	{
 		assert(show || !activate); // can't hide and activate
 
@@ -883,35 +861,59 @@ namespace
 			return false;
 		}
 
-		DWORD dwStartTime = GetTickCount();
-		DWORD dwTimeLeft = dwTimeout;
-		bool waitSucceeded = false;
-
-		while(dwTimeLeft > 10)
-		{
-			if(!IsWindow(hWnd))
-				break;
-
-			if(show ? IsWindowVisible(hWnd) : !IsWindowVisible(hWnd))
-			{
-				waitSucceeded = true;
-				break;
-			}
-
-			Sleep(10);
-
-			DWORD dwTime = GetTickCount();
-			if(dwTime >= dwStartTime + dwTimeout)
-				break;
-
-			dwTimeLeft = (dwStartTime + dwTimeout) - dwTime;
-		}
-
-		if(!waitSucceeded)
-		{
-			DEBUG_LOG(logWARNING) << "ShowWindowOnSwitch timeout for window " << hWnd;
-		}
-
 		return true;
+	}
+
+	void WaitForWindows(std::vector<HWND> hiddenWindows, std::vector<HWND> shownWindows, DWORD dwTimeout /*= WAIT_FOR_WINDOWS_TIMEOUT*/)
+	{
+		DWORD dwStartTime = GetTickCount();
+
+		WaitForShownWindows(hiddenWindows, false, dwTimeout);
+
+		DWORD dwTime = GetTickCount();
+		if(dwTime >= dwStartTime + dwTimeout)
+			return;
+
+		WaitForShownWindows(shownWindows, true, (dwStartTime + dwTimeout) - dwTime);
+	}
+
+	void WaitForShownWindows(std::vector<HWND> windows, bool shown, DWORD dwTimeout)
+	{
+		DWORD dwStartTime = GetTickCount();
+
+		for(auto &hWnd : windows)
+		{
+			for(;;)
+			{
+				if(!IsWindow(hWnd))
+				{
+					DEBUG_LOG(logWARNING) << "IsWindow failed for window " << hWnd;
+					break;
+				}
+
+				SetLastError(ERROR_SUCCESS);
+				BOOL bVisible = IsWindowVisible(hWnd);
+				if(!bVisible)
+				{
+					DWORD dwError = GetLastError();
+					if(dwError != ERROR_SUCCESS)
+					{
+						DEBUG_LOG(logWARNING) << "IsWindowVisible failed with " << dwError << " for window " << hWnd;
+						break;
+					}
+				}
+
+				if(shown ? bVisible : !bVisible)
+					break;
+
+				Sleep(10);
+
+				if(GetTickCount() >= dwStartTime + dwTimeout)
+				{
+					DEBUG_LOG(logWARNING) << "WaitForWindows timeout for window " << hWnd;
+					return;
+				}
+			}
+		}
 	}
 }

@@ -33,7 +33,6 @@ private:
 	void WaitForTaskbarIdle();
 	bool FindWindowOnTaskbar(HANDLE hTaskbar, HWND hWnd);
 	void EnableTaskbarsRedrawind(bool enable);
-	void WaitForWindows(std::vector<HWND> windows, DWORD dwTimeout);
 
 	VirtualDesktopsConfig m_config;
 	std::vector<DesktopInfo> m_desktops;
