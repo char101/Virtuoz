@@ -31,6 +31,7 @@ private:
 	void RestoreTaskbarsInfo();
 	void RestoreTaskbarInfo(HANDLE hTaskbar);
 	void WaitForTaskbarIdle();
+	bool FindWindowOnTaskbars(HWND hWnd);
 	bool FindWindowOnTaskbar(HANDLE hTaskbar, HWND hWnd);
 	void EnableTaskbarsRedrawind(bool enable);
 

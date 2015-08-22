@@ -683,66 +683,45 @@ void VirtualDesktops::WaitForTaskbarIdle()
 
 	m_fooWindow.ShowWindow(SW_SHOWNA);
 
-	bool found = false;
-	while(!found)
+	while(!FindWindowOnTaskbars(m_fooWindow))
 	{
-		TaskbarManipulator taskbarManipulator;
-		if(!taskbarManipulator.IsManipulating())
-			break;
-
-		HANDLE hTaskbar = TTLib_GetMainTaskbar();
-		if(FindWindowOnTaskbar(hTaskbar, m_fooWindow))
-		{
-			found = true;
-			break;
-		}
-
-		int nCount;
-		if(TTLib_GetSecondaryTaskbarCount(&nCount))
-		{
-			for(int i = 0; i < nCount; i++)
-			{
-				hTaskbar = TTLib_GetSecondaryTaskbar(i);
-				if(FindWindowOnTaskbar(hTaskbar, m_fooWindow))
-				{
-					found = true;
-					break;
-				}
-			}
-		}
+		Sleep(10);
 	}
 
 	m_fooWindow.ShowWindow(SW_HIDE);
 
-	while(found)
+	while(FindWindowOnTaskbars(m_fooWindow))
 	{
-		found = false;
+		Sleep(10);
+	}
+}
 
-		TaskbarManipulator taskbarManipulator;
-		if(!taskbarManipulator.IsManipulating())
-			break;
+bool VirtualDesktops::FindWindowOnTaskbars(HWND hWnd)
+{
+	TaskbarManipulator taskbarManipulator;
+	if(!taskbarManipulator.IsManipulating())
+		return false;
 
-		HANDLE hTaskbar = TTLib_GetMainTaskbar();
-		if(FindWindowOnTaskbar(hTaskbar, m_fooWindow))
+	HANDLE hTaskbar = TTLib_GetMainTaskbar();
+	if(FindWindowOnTaskbar(hTaskbar, hWnd))
+	{
+		return true;
+	}
+
+	int nCount;
+	if(TTLib_GetSecondaryTaskbarCount(&nCount))
+	{
+		for(int i = 0; i < nCount; i++)
 		{
-			found = true;
-			continue;
-		}
-
-		int nCount;
-		if(TTLib_GetSecondaryTaskbarCount(&nCount))
-		{
-			for(int i = 0; i < nCount; i++)
+			hTaskbar = TTLib_GetSecondaryTaskbar(i);
+			if(FindWindowOnTaskbar(hTaskbar, m_fooWindow))
 			{
-				hTaskbar = TTLib_GetSecondaryTaskbar(i);
-				if(FindWindowOnTaskbar(hTaskbar, m_fooWindow))
-				{
-					found = true;
-					break;
-				}
+				return true;
 			}
 		}
 	}
+
+	return false;
 }
 
 bool VirtualDesktops::FindWindowOnTaskbar(HANDLE hTaskbar, HWND hWnd)
@@ -789,40 +768,38 @@ void VirtualDesktops::EnableTaskbarsRedrawind(bool enable)
 	if(!m_TTLIbLoaded)
 		return;
 
-	TaskbarManipulator taskbarManipulator;
-	if(!taskbarManipulator.IsManipulating())
-		return;
+	std::vector<CWindow> taskListWindows;
 
-	HANDLE hTaskbar = TTLib_GetMainTaskbar();
-	CWindow taskListWindow = TTLib_GetTaskListWindow(hTaskbar);
-	if(enable)
 	{
-		taskListWindow.EnableWindow(TRUE);
-		taskListWindow.SetRedraw(TRUE);
-	}
-	else
-	{
-		taskListWindow.SetRedraw(FALSE);
-		taskListWindow.EnableWindow(FALSE);
-	}
+		TaskbarManipulator taskbarManipulator;
+		if(!taskbarManipulator.IsManipulating())
+			return;
 
-	int nCount;
-	if(TTLib_GetSecondaryTaskbarCount(&nCount))
-	{
-		for(int i = 0; i < nCount; i++)
+		HANDLE hTaskbar = TTLib_GetMainTaskbar();
+		taskListWindows.push_back(TTLib_GetTaskListWindow(hTaskbar));
+
+		int nCount;
+		if(TTLib_GetSecondaryTaskbarCount(&nCount))
 		{
-			hTaskbar = TTLib_GetSecondaryTaskbar(i);
-			taskListWindow = TTLib_GetTaskListWindow(hTaskbar);
-			if(enable)
+			for(int i = 0; i < nCount; i++)
 			{
-				taskListWindow.EnableWindow(TRUE);
-				taskListWindow.SetRedraw(TRUE);
+				hTaskbar = TTLib_GetSecondaryTaskbar(i);
+				taskListWindows.push_back(TTLib_GetTaskListWindow(hTaskbar));
 			}
-			else
-			{
-				taskListWindow.SetRedraw(FALSE);
-				taskListWindow.EnableWindow(FALSE);
-			}
+		}
+	}
+
+	for(auto taskListWindow : taskListWindows)
+	{
+		if(enable)
+		{
+			taskListWindow.EnableWindow(TRUE);
+			taskListWindow.SetRedraw(TRUE);
+		}
+		else
+		{
+			taskListWindow.SetRedraw(FALSE);
+			taskListWindow.EnableWindow(FALSE);
 		}
 	}
 }
