@@ -96,8 +96,8 @@ namespace
 {
 	bool IsWindowVisibleOnScreen(HWND hWnd);
 	bool ShowWindowOnSwitch(HWND hWnd, bool show, bool activate = false);
-	void WaitForWindows(std::vector<HWND> hiddenWindows, std::vector<HWND> shownWindows, DWORD dwTimeout = WAIT_FOR_WINDOWS_TIMEOUT);
-	void WaitForShownWindows(std::vector<HWND> windows, bool shown, DWORD dwTimeout);
+	void WaitForWindows(const std::vector<HWND> &hiddenWindows, const std::vector<HWND> &shownWindows, DWORD dwTimeout = WAIT_FOR_WINDOWS_TIMEOUT);
+	void WaitForShownWindows(const std::vector<HWND> &windows, bool shown, DWORD dwTimeout);
 }
 
 struct TaskbarItem
@@ -1060,7 +1060,7 @@ namespace
 		return true;
 	}
 
-	void WaitForWindows(std::vector<HWND> hiddenWindows, std::vector<HWND> shownWindows, DWORD dwTimeout /*= WAIT_FOR_WINDOWS_TIMEOUT*/)
+	void WaitForWindows(const std::vector<HWND> &hiddenWindows, const std::vector<HWND> &shownWindows, DWORD dwTimeout /*= WAIT_FOR_WINDOWS_TIMEOUT*/)
 	{
 		DWORD dwStartTime = GetTickCount();
 
@@ -1073,7 +1073,7 @@ namespace
 		WaitForShownWindows(shownWindows, true, (dwStartTime + dwTimeout) - dwTime);
 	}
 
-	void WaitForShownWindows(std::vector<HWND> windows, bool shown, DWORD dwTimeout)
+	void WaitForShownWindows(const std::vector<HWND> &windows, bool shown, DWORD dwTimeout)
 	{
 		DWORD dwStartTime = GetTickCount();
 
