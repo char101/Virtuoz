@@ -3,6 +3,7 @@
 #include "VirtualDesktopsConfig.h"
 
 struct DesktopInfo;
+struct TaskbarItem;
 
 class VirtualDesktops
 {
@@ -23,13 +24,21 @@ public:
 private:
 	bool CreateFooWindow();
 	void DestroyFooWindow();
+
 	void SwitchDesktopWindows(int desktopId);
+
 	void SaveMonitorsInfo();
 	void SaveTaskbarsInfo();
 	void SaveTaskbarInfo(HANDLE hTaskbar);
+
 	void RestoreMonitorsInfo();
 	void RestoreTaskbarsInfo();
 	void RestoreTaskbarInfo(HANDLE hTaskbar);
+	bool PlacePinnedItem(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, const WCHAR *pszAppId);
+	void OnPlacePinnedItemFailed(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, const std::vector<TaskbarItem> &taskbarItems, const TaskbarItem &failedTaskbarItem);
+	bool PlaceButtonItem(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, HWND hPlaceWnd);
+	void OnPlaceButtonItemFailed(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, const std::vector<TaskbarItem> &taskbarItems, const TaskbarItem &failedTaskbarItem);
+
 	void WaitForTaskbarIdle();
 	bool FindWindowOnTaskbars(HWND hWnd);
 	bool FindWindowOnTaskbar(HANDLE hTaskbar, HWND hWnd);
