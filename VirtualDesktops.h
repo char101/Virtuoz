@@ -35,9 +35,8 @@ private:
 	void RestoreTaskbarsInfo();
 	void RestoreTaskbarInfo(HANDLE hTaskbar);
 	bool PlacePinnedItem(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, const WCHAR *pszAppId);
-	void OnPlacePinnedItemFailed(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, const std::vector<TaskbarItem> &taskbarItems, const TaskbarItem &failedTaskbarItem);
 	bool PlaceButtonItem(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, HWND hPlaceWnd);
-	void OnPlaceButtonItemFailed(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, const std::vector<TaskbarItem> &taskbarItems, const TaskbarItem &failedTaskbarItem);
+	void OnPlaceItemFailed(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, const std::vector<TaskbarItem> &taskbarItems, const TaskbarItem &failedTaskbarItem);
 
 	void WaitForTaskbarIdle();
 	bool FindWindowOnTaskbars(HWND hWnd);

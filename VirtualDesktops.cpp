@@ -563,26 +563,32 @@ void VirtualDesktops::RestoreTaskbarInfo(HANDLE hTaskbar)
 
 		for(const auto &taskbarItem : taskbarInfo.taskbarItems)
 		{
+			bool placed = false;
 			if(taskbarItem.pinned)
 			{
-				if(!PlacePinnedItem(hTaskbar, nButtonGroupCount, nButtonGroupPosition, nButtonPositions, taskbarItem.appId))
+				if(PlacePinnedItem(hTaskbar, nButtonGroupCount, nButtonGroupPosition, nButtonPositions, taskbarItem.appId))
 				{
-					OnPlacePinnedItemFailed(hTaskbar, nButtonGroupCount, nButtonGroupPosition, nButtonPositions, taskbarInfo.taskbarItems, taskbarItem);
+					placed = true;
 				}
 			}
 			else
 			{
-				bool placed = false;
 				for(HWND hIterWnd : taskbarItem.windows)
 				{
 					if(PlaceButtonItem(hTaskbar, nButtonGroupCount, nButtonGroupPosition, nButtonPositions, hIterWnd))
+					{
 						placed = true;
+					}
 				}
+			}
 
-				if(!placed)
-				{
-					OnPlaceButtonItemFailed(hTaskbar, nButtonGroupCount, nButtonGroupPosition, nButtonPositions, taskbarInfo.taskbarItems, taskbarItem);
-				}
+			if(!placed)
+			{
+				// If placing the item failed, then it doesn't exist on the taskbar anymore.
+				// We do the following: if that's the only item with that AppId, and there's
+				// another, single item on the taskbar with that AppId, we place that item.
+				// This handles cases where a pinned item turned into a group with windows, or vice versa.
+				OnPlaceItemFailed(hTaskbar, nButtonGroupCount, nButtonGroupPosition, nButtonPositions, taskbarInfo.taskbarItems, taskbarItem);
 			}
 		}
 	}
@@ -625,99 +631,6 @@ bool VirtualDesktops::PlacePinnedItem(HANDLE hTaskbar, int nButtonGroupCount, in
 	}
 
 	return false;
-}
-
-void VirtualDesktops::OnPlacePinnedItemFailed(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, const std::vector<TaskbarItem> &taskbarItems, const TaskbarItem &failedTaskbarItem)
-{
-	assert(failedTaskbarItem.pinned == true);
-
-	// Make sure that there are no more items in taskbarItems with that AppId.
-	for(const auto &taskbarItem : taskbarItems)
-	{
-		if(&taskbarItem == &failedTaskbarItem)
-			continue;
-
-		if(taskbarItem.appId == failedTaskbarItem.appId)
-			return; // there's an additional item in the array with that AppId
-	}
-
-	// Make sure that there's exactly one (non-pinned) button group on the taskbar with that AppId.
-	HANDLE hFoundButtonGroup = NULL;
-	int nFoundButtonGroupIndex = 0;
-	TTLIB_GROUPTYPE nFoundButtonGroupType = TTLIB_GROUPTYPE_UNKNOWN;
-
-	for(int i = 0; i < nButtonGroupCount; i++)
-	{
-		HANDLE hButtonGroup = TTLib_GetButtonGroup(hTaskbar, i);
-
-		TTLIB_GROUPTYPE nButtonGroupType;
-		if(!TTLib_GetButtonGroupType(hButtonGroup, &nButtonGroupType) ||
-			nButtonGroupType == TTLIB_GROUPTYPE_UNKNOWN ||
-			nButtonGroupType == TTLIB_GROUPTYPE_TEMPORARY)
-		{
-			continue;
-		}
-
-		WCHAR szAppId[MAX_APPID_LENGTH];
-		TTLib_GetButtonGroupAppId(hButtonGroup, szAppId, MAX_APPID_LENGTH);
-
-		if(wcscmp(szAppId, failedTaskbarItem.appId) == 0)
-		{
-			if(hFoundButtonGroup)
-				return; // there's more than one such button group
-
-			hFoundButtonGroup = hButtonGroup;
-			nFoundButtonGroupIndex = i;
-			nFoundButtonGroupType = nButtonGroupType;
-		}
-	}
-
-	if(!hFoundButtonGroup)
-		return; // not found
-
-	if(nFoundButtonGroupType == TTLIB_GROUPTYPE_PINNED)
-	{
-		DEBUG_LOG(logWARNING) << "nFoundButtonGroupType == TTLIB_GROUPTYPE_PINNED";
-		return;
-	}
-
-	// Make sure that all the windows of that button group are new, i.e. they don't exist in taskbarItems.
-	int nFoundButtonCount;
-	if(TTLib_GetButtonCount(hFoundButtonGroup, &nFoundButtonCount))
-	{
-		for(int i = 0; i < nFoundButtonCount; i++)
-		{
-			HANDLE hFoundButton = TTLib_GetButton(hFoundButtonGroup, i);
-			HWND hFoundWnd = TTLib_GetButtonWindow(hFoundButton);
-
-			for(const auto &taskbarItem : taskbarItems)
-			{
-				if(!taskbarItem.pinned)
-				{
-					for(auto hWnd : taskbarItem.windows)
-					{
-						if(hFoundWnd == hWnd)
-							return; // one of the windows exists in taskbarItems.
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-		DEBUG_LOG(logERROR) << "TTLib_GetButtonCount failed";
-		return;
-	}
-
-	// Move it.
-	if(nFoundButtonGroupIndex > nButtonGroupPosition)
-		TTLib_ButtonGroupMove(hTaskbar, nFoundButtonGroupIndex, nButtonGroupPosition);
-	else
-		assert(nFoundButtonGroupIndex == nButtonGroupPosition);
-
-	nButtonGroupPosition++;
-	nButtonPositions.push_back(nFoundButtonCount);
-	assert(nButtonGroupPosition == nButtonPositions.size());
 }
 
 bool VirtualDesktops::PlaceButtonItem(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, HWND hPlaceWnd)
@@ -788,10 +701,8 @@ bool VirtualDesktops::PlaceButtonItem(HANDLE hTaskbar, int nButtonGroupCount, in
 	return false;
 }
 
-void VirtualDesktops::OnPlaceButtonItemFailed(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, const std::vector<TaskbarItem> &taskbarItems, const TaskbarItem &failedTaskbarItem)
+void VirtualDesktops::OnPlaceItemFailed(HANDLE hTaskbar, int nButtonGroupCount, int &nButtonGroupPosition, std::vector<int> &nButtonPositions, const std::vector<TaskbarItem> &taskbarItems, const TaskbarItem &failedTaskbarItem)
 {
-	assert(failedTaskbarItem.pinned == false);
-
 	// Make sure that there are no more items in taskbarItems with that AppId.
 	for(const auto &taskbarItem : taskbarItems)
 	{
