@@ -394,6 +394,14 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 				pWindowsHidden->push_back(hWnd);
 			}
 		}
+		else
+		{
+			TCHAR class_name[256];
+			if(GetClassName(hWnd, class_name, 256) > 0 && _tcscmp(class_name, L"tooltips_class32") == 0)
+			{
+				ShowWindowOnSwitch(hWnd, false);
+			}
+		}
 
 		return TRUE;
 	}, reinterpret_cast<LPARAM>(&param));
