@@ -255,21 +255,12 @@ bool VirtualDesktops::MoveWindowToDesktop(HWND hWnd, int desktopId)
 	if(desktopId == m_currentDesktopId)
 		return false;
 
-	CWindow window(hWnd);
 	DesktopInfo &targetDesktop = m_desktops[desktopId];
 
-	if(window.GetWindowProcessID() != GetCurrentProcessId() &&
-		window.IsWindowVisible())
+	if (CanMoveWindowToDesktop(hWnd) && ShowWindowOnSwitch(hWnd, false))
 	{
-		DWORD dwExStyle = window.GetExStyle();
-		if((dwExStyle & WS_EX_APPWINDOW) || !(dwExStyle & WS_EX_TOOLWINDOW)/* || IsWindowVisibleOnScreen(window)*/)
-		{
-			if(ShowWindowOnSwitch(hWnd, false))
-			{
-				targetDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
-				return true;
-			}
-		}
+		targetDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
+		return true;
 	}
 
 	return false;
