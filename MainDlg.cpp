@@ -89,10 +89,7 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 	}
 	else if(nHotKeyID >= HOTKEY_MOVE_WINDOW_TO_DESKTOP && nHotKeyID < HOTKEY_MOVE_WINDOW_TO_DESKTOP + numberOfDesktops)
 	{
-		CPoint point;
-		GetCursorPos(&point);
-
-		HWND hMoveWnd = WindowFromPoint(point);
+		HWND hMoveWnd = GetForegroundWindow();
 		if(hMoveWnd)
 			hMoveWnd = GetAncestor(hMoveWnd, GA_ROOT);
 
@@ -104,10 +101,7 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 	}
 	else if (nHotKeyID == HOTKEY_SHOW_ALL)
 	{
-		CPoint point;
-		GetCursorPos(&point);
-
-		HWND hMoveWnd = WindowFromPoint(point);
+		HWND hMoveWnd = GetForegroundWindow();
 		if(hMoveWnd)
 			hMoveWnd = GetAncestor(hMoveWnd, GA_ROOT);
 
@@ -116,30 +110,6 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 			m_virtualDesktops->CopyWindowToAllDesktops(hMoveWnd);
 		}
 	}
-}
-
-LRESULT CMainDlg::OnNotify(int idCtrl, LPNMHDR pnmh)
-{
-	switch(pnmh->idFrom)
-	{
-	case IDC_MAIN_SYSLINK:
-		switch(pnmh->code)
-		{
-		case NM_CLICK:
-		case NM_RETURN:
-			if((int)ShellExecute(m_hWnd, L"open", ((PNMLINK)pnmh)->item.szUrl, NULL, NULL, SW_SHOWNORMAL) <= 32)
-			{
-				CString str = L"An error occurred while trying to open the following website address:\n";
-				str += ((PNMLINK)pnmh)->item.szUrl;
-				MessageBox(str, NULL, MB_ICONHAND);
-			}
-			break;
-		}
-		break;
-	}
-
-	SetMsgHandled(FALSE);
-	return 0;
 }
 
 void CMainDlg::OnDestroy()

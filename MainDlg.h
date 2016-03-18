@@ -30,7 +30,6 @@ public:
 		MSG_WM_INITDIALOG(OnInitDialog)
 		MSG_WM_WINDOWPOSCHANGING(OnWindowPosChanging)
 		MSG_WM_HOTKEY(OnHotKey)
-		MSG_WM_NOTIFY(OnNotify)
 		MSG_WM_DESTROY(OnDestroy)
 		COMMAND_ID_HANDLER_EX(IDCANCEL, OnCancel)
 		COMMAND_HANDLER_EX(IDC_DESKS_COMBO, CBN_SELCHANGE, OnDesksComboChanged)
@@ -42,7 +41,6 @@ public:
 	BOOL OnInitDialog(CWindow wndFocus, LPARAM lInitParam);
 	void OnWindowPosChanging(LPWINDOWPOS lpWndPos);
 	void OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey);
-	LRESULT OnNotify(int idCtrl, LPNMHDR pnmh);
 	void OnDestroy();
 	void OnCancel(UINT uNotifyCode, int nID, CWindow wndCtl);
 	void OnDesksComboChanged(UINT uNotifyCode, int nID, CWindow wndCtl);
