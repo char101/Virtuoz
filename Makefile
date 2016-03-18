@@ -4,7 +4,7 @@ RC = rc
 RCFLAGS = /I wtl
 LIBS = TTLib\TTLib64.lib
 DEFINES = /D "WIN32" /D "_WINDOWS" /D "STRICT" /D "NDEBUG" /D "_UNICODE" /D "UNICODE"
-CFLAGS = /nologo /O2 /GS- /GL /Gw /I wtl /MD /EHs-c-
+CFLAGS = /nologo /O2 /GS- /GL /Gw /I wtl /MD
 LDFLAGS = /nologo /opt:ref /ltcg /manifest /dynamicbase /incremental:no
 
 .cpp.obj:
