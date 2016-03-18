@@ -244,14 +244,19 @@ bool VirtualDesktops::CanMoveWindowToDesktop(HWND hWnd)
 		if((dwExStyle & WS_EX_APPWINDOW) || !(dwExStyle & WS_EX_TOOLWINDOW)/* || IsWindowVisibleOnScreen(window)*/)
 		{
 			HANDLE proc = ::OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, window.GetWindowProcessID());
+
+			// full path
 			TCHAR proc_path[MAX_PATH];
 			::GetModuleFileNameEx(proc, NULL, proc_path, MAX_PATH);
-			FILE_LOG(logDEBUG) << proc_path;
+
+			// make it lower for case insensitive comparison
+			_tcslwr(proc_path);
+
+			// executable name
 			TCHAR *proc_exe = ::PathFindFileName(proc_path);
-			FILE_LOG(logDEBUG) << proc_exe;
+
 			if (m_config.ignored_executables.find(proc_path) == m_config.ignored_executables.end() &&
-				(proc_exe == proc_path ||
-				 m_config.ignored_executables.find(proc_exe) == m_config.ignored_executables.end()))
+				m_config.ignored_executables.find(proc_exe) == m_config.ignored_executables.end())
 			{
 				return true;
 			}

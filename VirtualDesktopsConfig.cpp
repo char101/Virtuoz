@@ -107,8 +107,8 @@ bool VirtualDesktopsConfig::LoadFromIniFile()
 		{
 			if (item.length() > 0)
 			{
+				std::transform(item.begin(), item.end(), item.begin(), _totlower);
 				ignored_executables.insert(item);
-				FILE_LOG(logDEBUG) << "ignore: " << item.c_str();
 			}
 		}
 	}
