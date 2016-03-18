@@ -20,6 +20,7 @@ public:
 	int GetCurrentDesktop();
 	bool CanMoveWindowToDesktop(HWND hWnd);
 	bool MoveWindowToDesktop(HWND hWnd, int desktopId);
+	bool CopyWindowToAllDesktops(HWND hWnd);
 
 private:
 	bool CreateFooWindow();

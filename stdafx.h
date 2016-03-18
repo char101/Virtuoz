@@ -39,6 +39,7 @@ extern CAppModule _Module;
 #include <map>
 #include <unordered_map>
 #include <memory>
+#include <algorithm>
 
 // Custom
 #include "log.h" // http://stackoverflow.com/a/5028917

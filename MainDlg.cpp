@@ -40,7 +40,7 @@ BOOL CMainDlg::OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 
 	desksCombo.SetCurSel(0);
 
-	if(::RegisterHotKey(m_hWnd, HOTKEY_MOVE_WINDOW_TO_DESKTOP, 
+	if(::RegisterHotKey(m_hWnd, HOTKEY_MOVE_WINDOW_TO_DESKTOP,
 		config.hotkey_move_window.fsModifiers | MOD_NOREPEAT, config.hotkey_move_window.vk))
 	{
 		m_registeredHotkeys.push_back(HOTKEY_MOVE_WINDOW_TO_DESKTOP);
@@ -94,23 +94,37 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 		CMenu menu;
 		menu.CreatePopupMenu();
 
-		for(int i = 0; i < numberOfDesktops; i++)
+		for(int i = 0; i <= numberOfDesktops; i++)
 		{
 			if(i == currentDesktop)
 				continue;
 
 			CString str;
-			str.Format(L"Move to desktop &%d", i + 1);
+			if (i < numberOfDesktops)
+			{
+				str.Format(L"Move to desktop &%d", i + 1);
+			}
+			else
+			{
+				str = L"Show on &all desktops";
+			}
 
 			menu.AppendMenu(MF_STRING | (canMove ? 0 : MF_DISABLED), RCMENU_DESKTOP + i, str);
 		}
 
 		int nCmd = menu.TrackPopupMenu(TPM_RIGHTBUTTON | TPM_RETURNCMD, point.x, point.y, m_hWnd);
 
-		if(nCmd >= RCMENU_DESKTOP && nCmd < RCMENU_DESKTOP + numberOfDesktops)
+		if(nCmd >= RCMENU_DESKTOP && nCmd <= RCMENU_DESKTOP + numberOfDesktops)
 		{
 			int nDesktop = nCmd - RCMENU_DESKTOP;
-			m_virtualDesktops->MoveWindowToDesktop(hMoveWnd, nDesktop);
+			if(nCmd < RCMENU_DESKTOP + numberOfDesktops)
+			{
+				m_virtualDesktops->MoveWindowToDesktop(hMoveWnd, nDesktop);
+			}
+			else
+			{
+				m_virtualDesktops->CopyWindowToAllDesktops(hMoveWnd);
+			}
 		}
 	}
 }

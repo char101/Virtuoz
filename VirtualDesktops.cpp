@@ -257,9 +257,38 @@ bool VirtualDesktops::MoveWindowToDesktop(HWND hWnd, int desktopId)
 
 	DesktopInfo &targetDesktop = m_desktops[desktopId];
 
-	if (CanMoveWindowToDesktop(hWnd) && ShowWindowOnSwitch(hWnd, false))
+	if(CanMoveWindowToDesktop(hWnd) && ShowWindowOnSwitch(hWnd, false))
 	{
 		targetDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
+
+		// we need to remove the hwnd from the other desktops because the window could be shown on all desktops
+		for (int i = 0;  i < GetNumberOfDesktops(); ++i)
+		{
+			if(i == m_currentDesktopId || i == desktopId)
+				continue;
+			auto &windows = m_desktops[i].windowsInfo.zOrderedWindows;
+			windows.erase(std::remove(windows.begin(), windows.end(), hWnd), windows.end());
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+bool VirtualDesktops::CopyWindowToAllDesktops(HWND hWnd)
+{
+	if (CanMoveWindowToDesktop(hWnd))
+	{
+		for(int i = 0; i < GetNumberOfDesktops(); ++i)
+		{
+			auto &windows = m_desktops[i].windowsInfo.zOrderedWindows;
+			if(std::find(windows.begin(), windows.end(), hWnd) == windows.end())
+			{
+				windows.push_back(hWnd);
+			}
+		}
+
 		return true;
 	}
 
