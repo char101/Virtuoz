@@ -7,8 +7,8 @@ This is a modification from the original [Virtuoz](https://github.com/RaMMicHaeL
 * [x] Change hotkey to move window to another desktop from ``Alt+``` to
   `Alt+Shift+<desktop number>`
 * [x] Add hotkey to show a window on all desktops
-* [x] Ignore pattern by executable path/name
-* [ ] Specify configuration file on command line
+* [x] Ignore pattern by executable path/name (case insensitive)
+* [ ] Specify configuration file on the command line
 
 ## DOWNLOAD
 
