@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "VirtualDesktops.h"
+#include <Psapi.h>
 
 #define WAIT_FOR_WINDOWS_TIMEOUT 500
 #define FOO_WND_CLASS_NAME       L"VirtuozFooWnd"
@@ -237,13 +238,23 @@ bool VirtualDesktops::CanMoveWindowToDesktop(HWND hWnd)
 {
 	CWindow window(hWnd);
 
-	if(window.GetWindowProcessID() != GetCurrentProcessId() &&
-		window.IsWindowVisible())
+	if(window.GetWindowProcessID() != GetCurrentProcessId() && window.IsWindowVisible())
 	{
 		DWORD dwExStyle = window.GetExStyle();
 		if((dwExStyle & WS_EX_APPWINDOW) || !(dwExStyle & WS_EX_TOOLWINDOW)/* || IsWindowVisibleOnScreen(window)*/)
 		{
-			return true;
+			HANDLE proc = ::OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, window.GetWindowProcessID());
+			TCHAR proc_path[MAX_PATH];
+			::GetModuleFileNameEx(proc, NULL, proc_path, MAX_PATH);
+			FILE_LOG(logDEBUG) << proc_path;
+			TCHAR *proc_exe = ::PathFindFileName(proc_path);
+			FILE_LOG(logDEBUG) << proc_exe;
+			if (m_config.ignored_executables.find(proc_path) == m_config.ignored_executables.end() &&
+				(proc_exe == proc_path ||
+				 m_config.ignored_executables.find(proc_exe) == m_config.ignored_executables.end()))
+			{
+				return true;
+			}
 		}
 	}
 
@@ -367,20 +378,15 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 
 		DesktopInfo &currentDesktop = pThis->m_desktops[pThis->m_currentDesktopId];
 
-		if(window.GetWindowProcessID() != GetCurrentProcessId() &&
-			window.IsWindowVisible())
+		if(pThis->CanMoveWindowToDesktop(hWnd))
 		{
-			DWORD dwExStyle = window.GetExStyle();
-			if((dwExStyle & WS_EX_APPWINDOW) || !(dwExStyle & WS_EX_TOOLWINDOW)/* || IsWindowVisibleOnScreen(window)*/)
-			{
-				// Suppress animation lazily.
-				pSuppressor->Suppress();
+			// Suppress animation lazily.
+			pSuppressor->Suppress();
 
-				if(ShowWindowOnSwitch(hWnd, false))
-				{
-					currentDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
-					pWindowsHidden->push_back(hWnd);
-				}
+			if(ShowWindowOnSwitch(hWnd, false))
+			{
+				currentDesktop.windowsInfo.zOrderedWindows.push_back(hWnd);
+				pWindowsHidden->push_back(hWnd);
 			}
 		}
 
