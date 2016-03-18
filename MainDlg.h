@@ -17,6 +17,7 @@ public:
 	{
 		HOTKEY_DESKTOP = 101,
 		HOTKEY_MOVE_WINDOW_TO_DESKTOP = 1001,
+		HOTKEY_SHOW_ALL = 2001
 	};
 
 	enum

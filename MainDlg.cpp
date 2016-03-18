@@ -35,19 +35,27 @@ BOOL CMainDlg::OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 			DEBUG_LOG(logERROR) << "Could not register hotkey for desktop " << (i + 1);
 		}
 
+		if(::RegisterHotKey(m_hWnd, HOTKEY_MOVE_WINDOW_TO_DESKTOP + i, config.hotkeys_move[i].fsModifiers | MOD_NOREPEAT, config.hotkeys_move[i].vk))
+		{
+			m_registeredHotkeys.push_back(HOTKEY_MOVE_WINDOW_TO_DESKTOP + i);
+		}
+		else
+		{
+			DEBUG_LOG(logERROR) << "Could not register hotkey for move window " << (i + 1);
+		}
+
 		desksCombo.AddString(comboText);
 	}
 
 	desksCombo.SetCurSel(0);
 
-	if(::RegisterHotKey(m_hWnd, HOTKEY_MOVE_WINDOW_TO_DESKTOP,
-		config.hotkey_move_window.fsModifiers | MOD_NOREPEAT, config.hotkey_move_window.vk))
+	if(::RegisterHotKey(m_hWnd, HOTKEY_SHOW_ALL, config.hotkey_show_all.fsModifiers | MOD_NOREPEAT, config.hotkey_show_all.vk))
 	{
-		m_registeredHotkeys.push_back(HOTKEY_MOVE_WINDOW_TO_DESKTOP);
+		m_registeredHotkeys.push_back(HOTKEY_SHOW_ALL);
 	}
 	else
 	{
-		DEBUG_LOG(logERROR) << "Could not register hotkey_move_window";
+		DEBUG_LOG(logERROR) << "Could not register hotkey_show_all";
 	}
 
 	// Init and show tray icon.
@@ -79,7 +87,7 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 		CComboBox desksCombo(GetDlgItem(IDC_DESKS_COMBO));
 		desksCombo.SetCurSel(nDesktop);
 	}
-	else if(nHotKeyID == HOTKEY_MOVE_WINDOW_TO_DESKTOP)
+	else if(nHotKeyID >= HOTKEY_MOVE_WINDOW_TO_DESKTOP && nHotKeyID < HOTKEY_MOVE_WINDOW_TO_DESKTOP + numberOfDesktops)
 	{
 		CPoint point;
 		GetCursorPos(&point);
@@ -87,44 +95,25 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 		HWND hMoveWnd = WindowFromPoint(point);
 		if(hMoveWnd)
 			hMoveWnd = GetAncestor(hMoveWnd, GA_ROOT);
-		bool canMove = hMoveWnd && m_virtualDesktops->CanMoveWindowToDesktop(hMoveWnd);
 
-		::SetForegroundWindow(m_hWnd);
-
-		CMenu menu;
-		menu.CreatePopupMenu();
-
-		for(int i = 0; i <= numberOfDesktops; i++)
+		if(hMoveWnd && m_virtualDesktops->CanMoveWindowToDesktop(hMoveWnd))
 		{
-			if(i == currentDesktop)
-				continue;
-
-			CString str;
-			if (i < numberOfDesktops)
-			{
-				str.Format(L"Move to desktop &%d", i + 1);
-			}
-			else
-			{
-				str = L"Show on &all desktops";
-			}
-
-			menu.AppendMenu(MF_STRING | (canMove ? 0 : MF_DISABLED), RCMENU_DESKTOP + i, str);
+			int targetDesktop = nHotKeyID - HOTKEY_MOVE_WINDOW_TO_DESKTOP;
+			m_virtualDesktops->MoveWindowToDesktop(hMoveWnd, targetDesktop);
 		}
+	}
+	else if (nHotKeyID == HOTKEY_SHOW_ALL)
+	{
+		CPoint point;
+		GetCursorPos(&point);
 
-		int nCmd = menu.TrackPopupMenu(TPM_RIGHTBUTTON | TPM_RETURNCMD, point.x, point.y, m_hWnd);
+		HWND hMoveWnd = WindowFromPoint(point);
+		if(hMoveWnd)
+			hMoveWnd = GetAncestor(hMoveWnd, GA_ROOT);
 
-		if(nCmd >= RCMENU_DESKTOP && nCmd <= RCMENU_DESKTOP + numberOfDesktops)
+		if(hMoveWnd && m_virtualDesktops->CanMoveWindowToDesktop(hMoveWnd))
 		{
-			int nDesktop = nCmd - RCMENU_DESKTOP;
-			if(nCmd < RCMENU_DESKTOP + numberOfDesktops)
-			{
-				m_virtualDesktops->MoveWindowToDesktop(hMoveWnd, nDesktop);
-			}
-			else
-			{
-				m_virtualDesktops->CopyWindowToAllDesktops(hMoveWnd);
-			}
+			m_virtualDesktops->CopyWindowToAllDesktops(hMoveWnd);
 		}
 	}
 }

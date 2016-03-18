@@ -38,8 +38,19 @@ extern CAppModule _Module;
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 #include <algorithm>
+#include <sstream>
+#ifdef UNICODE
+  typedef std::wstring String;
+  typedef std::wstringstream StringStream;
+  typedef std::wostringstream OStringStream;
+#else
+  typedef std::string String;
+  typedef std::stringstream StringStream;
+  typedef std::ostringstream OStringStream;
+#endif
 
 // Custom
 #include "log.h" // http://stackoverflow.com/a/5028917
