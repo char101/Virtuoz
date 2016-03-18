@@ -29,14 +29,31 @@ bool VirtualDesktopsConfig::LoadFromIniFile()
 		return false;
 
 	{
-		TCHAR buf[MAX_PATH];
-		if(GetPrivateProfileString(L"config", L"logpath", NULL, buf, MAX_PATH, iniFilePath))
+		TCHAR log_path[MAX_PATH];
+		if(GetPrivateProfileString(L"config", L"logpath", NULL, log_path, MAX_PATH, iniFilePath) > 0)
 		{
-			Output2FILE::Stream() = _tfopen(buf, L"w");
-
-			if(GetPrivateProfileString(L"config", L"loglevel", NULL, buf, MAX_PATH, iniFilePath))
+			if(PathIsRelative(log_path))
 			{
-				FILELog::ReportingLevel() = FILELog::FromString(buf);
+				TCHAR module_path[MAX_PATH];
+				if(GetModuleFileName(NULL, module_path, MAX_PATH) == 0)
+				{
+					TCHAR combined_path[MAX_PATH];
+					PathRemoveFileSpec(module_path);
+					PathCombine(combined_path, module_path, log_path);
+					_tcscpy_s(log_path, MAX_PATH, combined_path);
+				}
+			}
+
+			FILE *log_handle = 0;
+			if(_tfopen_s(&log_handle, log_path, L"w") == 0)
+			{
+				Output2FILE::Stream() = log_handle;
+
+				TCHAR log_level[100];
+				if(GetPrivateProfileString(L"config", L"loglevel", NULL, log_level, 100, iniFilePath) > 0)
+				{
+					FILELog::ReportingLevel() = FILELog::FromString(log_level);
+				}
 			}
 		}
 	}
