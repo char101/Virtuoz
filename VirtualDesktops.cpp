@@ -250,7 +250,7 @@ bool VirtualDesktops::CanMoveWindowToDesktop(HWND hWnd)
 			::GetModuleFileNameEx(proc, NULL, proc_path, MAX_PATH);
 
 			// make it lower for case insensitive comparison
-			_tcslwr(proc_path);
+			_tcslwr_s(proc_path, MAX_PATH);
 
 			// executable name
 			TCHAR *proc_exe = ::PathFindFileName(proc_path);
@@ -1005,6 +1005,23 @@ namespace
 		{
 			DEBUG_LOG(logWARNING) << "SetWindowPos failed with " << GetLastError() << " for window " << hWnd;
 			return false;
+		}
+
+		// when hiding a window, also hide its tooltips
+		if(!show)
+		{
+			EnumChildWindows(
+				hWnd,
+				[](HWND hChildWnd, LPARAM lParam) -> BOOL {
+					TCHAR className[256];
+					if(GetClassName(hChildWnd, className, sizeof(className)) > 0 && _tcscmp(className, _T("tooltips_class32")) == 0 && IsWindowVisible(hChildWnd))
+					{
+						SetWindowPos(hChildWnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_ASYNCWINDOWPOS | SWP_NOACTIVATE | SWP_NOZORDER | SWP_HIDEWINDOW);
+					}
+					return true; // continue enumeration
+				},
+				NULL
+			);
 		}
 
 		return true;
