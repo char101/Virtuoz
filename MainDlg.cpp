@@ -22,7 +22,7 @@ BOOL CMainDlg::OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 	for(int i = 0; i < config.numberOfDesktops; i++)
 	{
 		CString comboText;
-		comboText.Format(L"Desktop %d: ", i + 1);
+		comboText.Format(_T("Desktop %d: "), i + 1);
 		comboText += VirtualDesktopsConfig::HotkeyToString(config.hotkeys[i]);
 
 		if(::RegisterHotKey(m_hWnd, HOTKEY_DESKTOP + i, config.hotkeys[i].fsModifiers | MOD_NOREPEAT, config.hotkeys[i].vk))
@@ -31,8 +31,8 @@ BOOL CMainDlg::OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 		}
 		else
 		{
-			comboText += L" (hotkey not registered)";
-			DEBUG_LOG(logERROR) << "Could not register hotkey for desktop " << (i + 1);
+			comboText += _T(" (hotkey not registered)");
+			DEBUG_LOG(logERROR) << _T("Could not register hotkey for desktop ") << (i + 1);
 		}
 
 		if(::RegisterHotKey(m_hWnd, HOTKEY_MOVE_WINDOW_TO_DESKTOP + i, config.hotkeys_move[i].fsModifiers | MOD_NOREPEAT, config.hotkeys_move[i].vk))
@@ -41,7 +41,7 @@ BOOL CMainDlg::OnInitDialog(CWindow wndFocus, LPARAM lInitParam)
 		}
 		else
 		{
-			DEBUG_LOG(logERROR) << "Could not register hotkey for move window " << (i + 1);
+			DEBUG_LOG(logERROR) << _T("Could not register hotkey for move window ") << (i + 1);
 		}
 
 		desksCombo.AddString(comboText);
@@ -203,7 +203,7 @@ void CMainDlg::NotifyIconRightClickMenu()
 	}
 
 	menu.AppendMenu(MF_SEPARATOR);
-	menu.AppendMenu(MF_STRING, RCMENU_EXIT, L"Exit");
+	menu.AppendMenu(MF_STRING, RCMENU_EXIT, _T("Exit"));
 
 	menu.CheckMenuRadioItem(RCMENU_DESKTOP, RCMENU_DESKTOP + numberOfDesktops - 1,
 		RCMENU_DESKTOP + currentDesktop, MF_BYCOMMAND);

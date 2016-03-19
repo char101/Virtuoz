@@ -41,10 +41,10 @@ namespace
 {
 	int RunApp(HINSTANCE hInstance)
 	{
-		CHandle hMutex(::CreateMutex(NULL, TRUE, L"virtuoz_app"));
+		CHandle hMutex(::CreateMutex(NULL, TRUE, _T("virtuoz_app")));
 		if(hMutex && GetLastError() == ERROR_ALREADY_EXISTS)
 		{
-			CWindow wndRunning(::FindWindow(L"Virtuoz", NULL));
+			CWindow wndRunning(::FindWindow(_T("Virtuoz"), NULL));
 			if(wndRunning)
 			{
 				::AllowSetForegroundWindow(wndRunning.GetWindowProcessID());
@@ -54,7 +54,7 @@ namespace
 			return 0;
 		}
 
-		RegisterDialogClass(L"Virtuoz", hInstance);
+		RegisterDialogClass(_T("Virtuoz"), hInstance);
 
 		int nRet = 0;
 		// BLOCK: Run application
@@ -63,7 +63,7 @@ namespace
 			nRet = (int)dlgMain.DoModal();
 		}
 
-		UnregisterClass(L"Virtuoz", hInstance);
+		UnregisterClass(_T("Virtuoz"), hInstance);
 
 		if(hMutex)
 			::ReleaseMutex(hMutex);

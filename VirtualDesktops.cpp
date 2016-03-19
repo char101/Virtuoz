@@ -3,7 +3,7 @@
 #include <Psapi.h>
 
 #define WAIT_FOR_WINDOWS_TIMEOUT 500
-#define FOO_WND_CLASS_NAME       L"VirtuozFooWnd"
+#define FOO_WND_CLASS_NAME       _T("VirtuozFooWnd")
 
 // http://stackoverflow.com/a/6088475
 class WindowsAnimationSuppressor
@@ -255,8 +255,8 @@ bool VirtualDesktops::CanMoveWindowToDesktop(HWND hWnd)
 			// executable name
 			TCHAR *proc_exe = ::PathFindFileName(proc_path);
 
-			if (m_config.ignored_executables.find(proc_path) == m_config.ignored_executables.end() &&
-				m_config.ignored_executables.find(proc_exe) == m_config.ignored_executables.end())
+			if(m_config.ignored_executables.find(proc_path) == m_config.ignored_executables.end() &&
+			   m_config.ignored_executables.find(proc_exe) == m_config.ignored_executables.end())
 			{
 				return true;
 			}
@@ -397,7 +397,7 @@ void VirtualDesktops::SwitchDesktopWindows(int desktopId)
 		else
 		{
 			TCHAR class_name[256];
-			if(GetClassName(hWnd, class_name, 256) > 0 && _tcscmp(class_name, L"tooltips_class32") == 0)
+			if(GetClassName(hWnd, class_name, 256) > 0 && _tcscmp(class_name, _T("tooltips_class32")) == 0)
 			{
 				ShowWindowOnSwitch(hWnd, false);
 			}
