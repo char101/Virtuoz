@@ -45,7 +45,7 @@ bool VirtualDesktopsConfig::LoadFromIniFile()
 			}
 
 			FILE *log_handle = 0;
-			if(_tfopen_s(&log_handle, log_path, _T("w")) == 0)
+			if(_tfopen_s(&log_handle, log_path, _T("w+")) == 0)
 			{
 				Output2FILE::Stream() = log_handle;
 
@@ -67,65 +67,65 @@ bool VirtualDesktopsConfig::LoadFromIniFile()
 		numberOfDesktops = 20;
 
 	hotkeys.resize(numberOfDesktops);
+	hotkeys_move.resize(numberOfDesktops);
 
 	static const char pDefaultKeys[] = "1234567890qwertyuiop";
+	CString iniKey;
+	CString iniValue;
 
+	// switch desktop hotkey
 	for(int i = 0; i < numberOfDesktops; ++i)
 	{
-		CString iniKey;
 		iniKey.Format(_T("hotkey%d"), i + 1);
+		GetPrivateProfileString(_T("config"), iniKey, NULL, iniValue.GetBuffer(100), 100, iniFilePath);
+		iniValue.ReleaseBuffer();
 
-		CString hotkeyName;
-		GetPrivateProfileString(_T("config"), iniKey, NULL, hotkeyName.GetBuffer(MAX_PATH), MAX_PATH, iniFilePath);
-		hotkeyName.ReleaseBuffer();
-
-		if(!HotkeyFromString(hotkeyName, &hotkeys[i]))
+		if(iniKey.IsEmpty() || !HotkeyFromString(iniValue, &hotkeys[i]))
 		{
 			hotkeys[i].vk = pDefaultKeys[i];
 			hotkeys[i].fsModifiers = MOD_ALT;
 		}
 	}
 
+	// move window hotkey
 	for (int i = 0; i < numberOfDesktops; ++i)
 	{
-		CString iniKey;
 		iniKey.Format(_T("hotkey_move%d"), i + 1);
+		GetPrivateProfileString(_T("config"), iniKey, NULL, iniValue.GetBuffer(100), 100, iniFilePath);
+		iniValue.ReleaseBuffer();
 
-		CString hotkeyName;
-		GetPrivateProfileString(_T("config"), iniKey, NULL, hotkeyName.GetBuffer(MAX_PATH), MAX_PATH, iniFilePath);
-		hotkeyName.ReleaseBuffer();
-
-		if (!HotkeyFromString(hotkeyName, &hotkeys_move[i]))
+		if (iniKey.IsEmpty() || !HotkeyFromString(iniValue, &hotkeys_move[i]))
 		{
 			hotkeys_move[i].vk = pDefaultKeys[i];
 			hotkeys_move[i].fsModifiers = MOD_ALT | MOD_SHIFT;
 		}
 	}
 
+	// show all hotkey
 	{
-		CString hotkeyName;
-		GetPrivateProfileString(_T("config"), _T("hotkey_show_all"), NULL, hotkeyName.GetBuffer(MAX_PATH), MAX_PATH, iniFilePath);
-		hotkeyName.ReleaseBuffer();
+		GetPrivateProfileString(_T("config"), _T("hotkey_show_all"), NULL, iniValue.GetBuffer(100), 100, iniFilePath);
+		iniValue.ReleaseBuffer();
 
-		if(!HotkeyFromString(hotkeyName, &hotkey_show_all))
+		if(iniValue.IsEmpty() || !HotkeyFromString(iniValue, &hotkey_show_all))
 		{
 			hotkey_show_all.vk = VK_OEM_3;
 			hotkey_show_all.fsModifiers = MOD_ALT | MOD_SHIFT;
 		}
 	}
 
+	// ignored executables
 	{
-		TCHAR buf[MAX_PATH];
-		GetPrivateProfileString(_T("config"), _T("ignore"), NULL, buf, MAX_PATH, iniFilePath);
-		String sbuf(buf);
-		StringStream ss(sbuf);
-		String item;
-		while (std::getline(ss, item, L';'))
+		GetPrivateProfileString(_T("config"), _T("ignore"), NULL, iniValue.GetBuffer(100 * MAX_PATH), 100 * MAX_PATH, iniFilePath);
+		iniValue.ReleaseBuffer();
+		if(!iniValue.IsEmpty())
 		{
-			if (item.length() > 0)
+			int pos = 0;
+			CString token = iniValue.Tokenize(_T(";"), pos);
+			while(!token.IsEmpty())
 			{
-				std::transform(item.begin(), item.end(), item.begin(), _totlower);
-				ignored_executables.insert(item);
+				FILE_LOG(logDEBUG) << "Ignoring: " << (LPCTSTR) token;
+				ignored_executables.insert((LPCTSTR) token);
+				token = iniValue.Tokenize(_T(";"), pos);
 			}
 		}
 	}
