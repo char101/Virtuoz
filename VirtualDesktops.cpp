@@ -1016,11 +1016,20 @@ namespace
 					TCHAR className[256];
 					if(GetClassName(hChildWnd, className, sizeof(className)) > 0 && _tcscmp(className, _T("tooltips_class32")) == 0 && IsWindowVisible(hChildWnd))
 					{
+						HWND *phWnd = reinterpret_cast<HWND*>(lParam);
+						TCHAR windowTitle[1024];
+						GetWindowText(*phWnd, windowTitle, sizeof(windowTitle));
+
+						TCHAR tooltipText[1024];
+						SendMessage(hChildWnd, WM_GETTEXT, sizeof(tooltipText), reinterpret_cast<LPARAM>(tooltipText));
+
+						FILE_LOG(logDEBUG1) << "Hiding tooltip \"" << tooltipText << "\" of \"" << windowTitle << "\"";
+
 						SetWindowPos(hChildWnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_ASYNCWINDOWPOS | SWP_NOACTIVATE | SWP_NOZORDER | SWP_HIDEWINDOW);
 					}
 					return true; // continue enumeration
 				},
-				NULL
+				reinterpret_cast<LPARAM>(&hWnd)
 			);
 		}
 
