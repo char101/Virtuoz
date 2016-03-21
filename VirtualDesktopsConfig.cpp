@@ -108,7 +108,7 @@ bool VirtualDesktopsConfig::LoadFromIniFile()
 
 		if(iniValue.IsEmpty() || !HotkeyFromString(iniValue, &hotkey_show_all))
 		{
-			hotkey_show_all.vk = VK_OEM_3;
+			hotkey_show_all.vk = '0';
 			hotkey_show_all.fsModifiers = MOD_ALT | MOD_SHIFT;
 		}
 	}
