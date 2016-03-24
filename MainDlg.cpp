@@ -74,6 +74,16 @@ void CMainDlg::OnWindowPosChanging(LPWINDOWPOS lpWndPos)
 	}
 }
 
+HWND CMainDlg::GetTargetWindow()
+{
+	HWND hWnd = GetForegroundWindow();
+	if (hWnd)
+		hWnd = GetAncestor(hWnd, GA_ROOT);
+	if (!m_virtualDesktops->CanMoveWindowToDesktop(hWnd))
+		hWnd = NULL;
+	return hWnd;
+}
+
 void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 {
 	int numberOfDesktops = m_virtualDesktops->GetNumberOfDesktops();
@@ -89,11 +99,8 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 	}
 	else if(nHotKeyID >= HOTKEY_MOVE_WINDOW_TO_DESKTOP && nHotKeyID < HOTKEY_MOVE_WINDOW_TO_DESKTOP + numberOfDesktops)
 	{
-		HWND hMoveWnd = GetForegroundWindow();
+		HWND hMoveWnd = GetTargetWindow();
 		if(hMoveWnd)
-			hMoveWnd = GetAncestor(hMoveWnd, GA_ROOT);
-
-		if(hMoveWnd && m_virtualDesktops->CanMoveWindowToDesktop(hMoveWnd))
 		{
 			int targetDesktop = nHotKeyID - HOTKEY_MOVE_WINDOW_TO_DESKTOP;
 			m_virtualDesktops->MoveWindowToDesktop(hMoveWnd, targetDesktop);
@@ -101,11 +108,8 @@ void CMainDlg::OnHotKey(int nHotKeyID, UINT uModifiers, UINT uVirtKey)
 	}
 	else if (nHotKeyID == HOTKEY_SHOW_ALL)
 	{
-		HWND hMoveWnd = GetForegroundWindow();
+		HWND hMoveWnd = GetTargetWindow();
 		if(hMoveWnd)
-			hMoveWnd = GetAncestor(hMoveWnd, GA_ROOT);
-
-		if(hMoveWnd && m_virtualDesktops->CanMoveWindowToDesktop(hMoveWnd))
 		{
 			m_virtualDesktops->CopyWindowToAllDesktops(hMoveWnd);
 		}

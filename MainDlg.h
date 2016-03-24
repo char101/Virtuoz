@@ -51,6 +51,7 @@ public:
 private:
 	void InitNotifyIconData();
 	void NotifyIconRightClickMenu();
+	HWND GetTargetWindow();
 
 	std::unique_ptr<VirtualDesktops> m_virtualDesktops;
 	std::vector<int> m_registeredHotkeys;
