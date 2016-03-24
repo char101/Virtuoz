@@ -13,7 +13,7 @@ This is a modification from the original [Virtuoz](https://github.com/RaMMicHaeL
 * [x] Target active window when moving windows instead of window under mouse
   pointer.
 * [x] Handle stray tooltip
-* [ ] Load custom icon (Virtuoz.ico in the same folder as Virtuoz.exe)
+* [x] Load custom icon (Virtuoz.ico in the same folder as Virtuoz.exe)
 * [ ] Option to dump window hwnd ids on startup and before switching desktop
 * [ ] Draw current desktop number on the tray icon
 
