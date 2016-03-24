@@ -172,12 +172,26 @@ LRESULT CMainDlg::OnBringToFront(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 void CMainDlg::InitNotifyIconData()
 {
+	CPath icoPath;
+	if (GetModuleFileName(NULL, icoPath.m_strPath.GetBuffer(MAX_PATH), MAX_PATH) != 0)
+	{
+		icoPath.m_strPath.ReleaseBuffer();
+		icoPath.RenameExtension(_T(".ico"));
+	}
+
 	m_notifyIconData.cbSize = NOTIFYICONDATA_V1_SIZE;
 	m_notifyIconData.hWnd = m_hWnd;
 	m_notifyIconData.uID = 1;
 	m_notifyIconData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
 	m_notifyIconData.uCallbackMessage = UWM_NOTIFYICON;
-	m_notifyIconData.hIcon = AtlLoadIconImage(IDR_MAINFRAME, LR_DEFAULTCOLOR, ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON));
+	if (icoPath.FileExists())
+	{
+		m_notifyIconData.hIcon = AtlLoadIconImage((LPCTSTR)icoPath.m_strPath, LR_DEFAULTCOLOR | LR_LOADFROMFILE, ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON));
+	}
+	else
+	{
+		m_notifyIconData.hIcon = AtlLoadIconImage(IDR_MAINFRAME, LR_DEFAULTCOLOR, ::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON));
+	}
 
 	CString sWindowText;
 	GetWindowText(sWindowText);
